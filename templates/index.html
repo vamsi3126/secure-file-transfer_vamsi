@@ -215,6 +215,18 @@
             border-left: 4px solid #0071e3;
             backdrop-filter: blur(10px);
         }
+
+        .server-error {
+            margin-top: 16px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            background: rgba(255, 59, 48, 0.15);
+            border: 1px solid rgba(255, 59, 48, 0.4);
+            color: #ffb3ad;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
         
         .file-info {
             background: var(--info-bg);
@@ -323,6 +335,12 @@
                     <i class="fas fa-download"></i> Decrypt & Download
                 </button>
             </form>
+            {% if error %}
+            <div class="server-error">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
         </div>
         
         <footer>

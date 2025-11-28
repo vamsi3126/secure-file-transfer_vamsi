@@ -1,119 +1,155 @@
 from flask import Flask, request, render_template, send_file, jsonify
+import base64
+import hashlib
+import io
 import os
 import random
 import string
-import time
-import threading
 from datetime import datetime, timedelta
-import atexit
-import shutil
-import hashlib
-import base64
-import requests
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet
+from pymongo import MongoClient, ASCENDING
+from pymongo.errors import PyMongoError
+from bson.binary import Binary
 
 app = Flask(__name__)
 
-# Configuration
-UPLOAD_FOLDER = "uploads"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-app.config['MAX_CONTENT_LENGTH'] = 150 * 1024 * 1024  # 150MB limit
+MAX_FILE_SIZE = 150 * 1024 * 1024  # 150MB
+app.config["MAX_CONTENT_LENGTH"] = MAX_FILE_SIZE
 
-# Store file access codes and keys
-file_data = {}
+DEFAULT_MONGO_URI = (
+    "mongodb+srv://vamsi3126:Vsvg%40database1@cluster0.4glo7wg.mongodb.net/?appName=Cluster0"
+)
+MONGODB_URI = os.getenv("MONGODB_URI", DEFAULT_MONGO_URI)
+MONGODB_DB = os.getenv("MONGODB_DB", "wireless_file_transfer")
 
-# Error handler for large files
-@app.errorhandler(413)
-def request_too_large(e):
-    return jsonify({"error": "File exceeds 150MB limit"}), 413
+if not MONGODB_URI:
+    raise RuntimeError("MONGODB_URI is required. Provide your MongoDB connection string.")
 
-# Generate a 4-digit PIN
+mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+db = mongo_client[MONGODB_DB]
+transfers = db["transfers"]
+transfers.create_index([("access_code", ASCENDING)], unique=True)
+# TTL index enforces 24h retention automatically
+transfers.create_index("created_at", expireAfterSeconds=60 * 60 * 24)
+
+
+def cleanup_expired_records():
+    threshold = datetime.utcnow() - timedelta(hours=24)
+    transfers.delete_many({"created_at": {"$lt": threshold}})
+
+
 def generate_pin():
     return "".join(random.choices(string.digits, k=4))
 
-# Derive encryption key from PIN
-def derive_key(pin):
+
+def derive_key(pin: str) -> bytes:
     salt = b"unique_salt_value"
     kdf = PBKDF2HMAC(
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
         iterations=100000,
-        backend=default_backend()
+        backend=default_backend(),
     )
     return base64.urlsafe_b64encode(kdf.derive(pin.encode()))
 
-# Cleanup old files (24-hour retention)
-def cleanup_old_files():
-    now = datetime.now()
-    for filename in os.listdir(UPLOAD_FOLDER):
-        filepath = os.path.join(UPLOAD_FOLDER, filename)
-        try:
-            if os.path.isfile(filepath):
-                file_time = datetime.fromtimestamp(os.path.getmtime(filepath))
-                if now - file_time > timedelta(hours=24):
-                    os.remove(filepath)
-                    for code in list(file_data.keys()):
-                        if file_data[code]['path'] == filepath:
-                            del file_data[code]
-        except Exception as e:
-            print(f"Cleanup error for {filename}: {str(e)}")
 
-# Initialize cleanup
-atexit.register(cleanup_old_files)
-cleanup_old_files()
+def hash_key(pin: str) -> str:
+    return hashlib.sha256(pin.encode()).hexdigest()
+
+
+def get_transfer(code: str):
+    return transfers.find_one({"access_code": code})
+
+
+def store_transfer(code: str, key_hash: str, filename: str, size_mb: float, encrypted: bytes):
+    transfers.insert_one(
+        {
+            "access_code": code,
+            "key_hash": key_hash,
+            "filename": filename,
+            "size_mb": size_mb,
+            "encrypted_data": Binary(encrypted),
+            "created_at": datetime.utcnow(),
+        }
+    )
+
+
+def delete_transfer(code: str):
+    transfers.delete_one({"access_code": code})
+
+
+def generate_unique_code() -> str:
+    # try a few times to avoid collisions
+    for _ in range(10):
+        candidate = generate_pin()
+        if not get_transfer(candidate):
+            return candidate
+    return "".join(random.choices(string.digits, k=6))
+
+
+@app.errorhandler(413)
+def request_too_large(e):
+    return jsonify({"error": "File exceeds 150MB limit"}), 413
+
 
 @app.route("/")
 def upload_form():
     return render_template("index.html")
 
+
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    if 'file' not in request.files:
+    if "file" not in request.files:
         return jsonify({"error": "No file selected"}), 400
 
-    file = request.files['file']
-    if file.filename == '':
+    file = request.files["file"]
+    if file.filename == "":
         return jsonify({"error": "No file selected"}), 400
+
+    file_bytes = file.read()
+    if not file_bytes:
+        return jsonify({"error": "Empty file"}), 400
+    if len(file_bytes) > MAX_FILE_SIZE:
+        return jsonify({"error": "File exceeds 150MB limit"}), 413
 
     try:
-        access_code = generate_pin()
+        cleanup_expired_records()
+        access_code = generate_unique_code()
         decryption_key = generate_pin()
-        
-        file_data_bytes = file.read()
-        file_size_mb = round(len(file_data_bytes) / (1024 * 1024), 2)
-        
         derived_key = derive_key(decryption_key)
         cipher = Fernet(derived_key)
-        encrypted_data = cipher.encrypt(file_data_bytes)
+        encrypted_data = cipher.encrypt(file_bytes)
+        size_mb = round(len(file_bytes) / (1024 * 1024), 2)
 
-        filename = file.filename
-        encrypted_file_path = os.path.join(UPLOAD_FOLDER, f"{filename}.enc")
-        with open(encrypted_file_path, "wb") as f:
-            f.write(encrypted_data)
+        store_transfer(
+            code=access_code,
+            key_hash=hash_key(decryption_key),
+            filename=file.filename,
+            size_mb=size_mb,
+            encrypted=encrypted_data,
+        )
 
-        file_data[access_code] = {
-            "path": encrypted_file_path,
-            "key": decryption_key,
-            "filename": filename,
-            "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "size_mb": file_size_mb
-        }
+        return jsonify(
+            {
+                "success": True,
+                "file": file.filename,
+                "size_mb": size_mb,
+                "code": access_code,
+                "key": decryption_key,
+                "warning": "Files expire in 24 hours or after one successful download.",
+            }
+        )
+    except PyMongoError as db_err:
+        app.logger.exception("Database error while saving file")
+        return jsonify({"error": f"Database error: {db_err}"}), 500
+    except Exception as exc:
+        app.logger.exception("Upload failed")
+        return jsonify({"error": f"Upload failed: {exc}"}), 500
 
-        return jsonify({
-            "success": True,
-            "file": filename,
-            "size_mb": file_size_mb,
-            "code": access_code,
-            "key": decryption_key,
-            "warning": "Download immediately - files expire in 24 hours or if server restarts"
-        })
-
-    except Exception as e:
-        return jsonify({"error": f"Upload failed: {str(e)}"}), 500
 
 @app.route("/download", methods=["POST"])
 def download_file():
@@ -123,58 +159,38 @@ def download_file():
     if not code or not key:
         return render_template("index.html", error="Both code and key are required")
 
-    if code not in file_data:
-        return render_template("index.html", error="Invalid access code")
+    record = get_transfer(code)
+    if not record:
+        return render_template("index.html", error="Invalid or expired access code")
 
-    if key != file_data[code]["key"]:
+    created_at: datetime = record.get("created_at", datetime.utcnow())
+    if created_at < datetime.utcnow() - timedelta(hours=24):
+        delete_transfer(code)
+        return render_template("index.html", error="File expired")
+
+    if hash_key(key) != record["key_hash"]:
         return render_template("index.html", error="Invalid decryption key")
 
     try:
-        encrypted_file_path = file_data[code]["path"]
-        if not os.path.exists(encrypted_file_path):
-            return render_template("index.html", error="File expired or deleted")
-
+        encrypted_bytes = bytes(record["encrypted_data"])
         derived_key = derive_key(key)
         cipher = Fernet(derived_key)
-        
-        with open(encrypted_file_path, "rb") as f:
-            decrypted_data = cipher.decrypt(f.read())
+        decrypted_data = cipher.decrypt(encrypted_bytes)
 
-        temp_path = os.path.join(UPLOAD_FOLDER, file_data[code]["filename"])
-        with open(temp_path, "wb") as f:
-            f.write(decrypted_data)
+        buffer = io.BytesIO(decrypted_data)
+        buffer.seek(0)
 
-        response = send_file(
-            temp_path,
+        delete_transfer(code)
+
+        return send_file(
+            buffer,
             as_attachment=True,
-            download_name=file_data[code]["filename"]
+            download_name=record["filename"],
         )
-        
-        @response.call_on_close
-        def cleanup():
-            try:
-                os.remove(temp_path)
-            except:
-                pass
-                
-        return response
+    except Exception as exc:
+        app.logger.exception("Download failed")
+        return render_template("index.html", error=f"Download failed: {exc}")
 
-    except Exception as e:
-        return render_template("index.html", error=f"Download failed: {str(e)}")
-
-# Keep-Alive Function (Prevents Render Shutdown)
-def keep_alive():
-    while True:
-        try:
-            print("Sending keep-alive request...")
-            requests.get("https://secure-file-transfer-0tal.onrender.com")
-        except Exception as e:
-            print(f"Keep-alive request failed: {e}")
-        time.sleep(600)  # Wait 10 minutes before sending the next request
-
-# Start Keep-Alive Thread
-keep_alive_thread = threading.Thread(target=keep_alive, daemon=True)
-keep_alive_thread.start()
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=False)  # debug=False for production
+    app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=False)
