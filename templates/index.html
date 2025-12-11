@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure File Drop</title>
+    <title>Secure Data Transfer</title>
     <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
         :root {
-            --primary-color: #a855f7;
-            --primary-hover: #7c3aed;
-            --text-color: #f8fafc;
-            --muted-text: #c4b5fd;
+            --primary-color: rgb(168, 85, 247);
+            --primary-hover: rgb(124, 58, 237);
+            --text-color: rgb(248, 250, 252);
+            --muted-text: rgb(196, 181, 253);
             --card-bg: rgba(17, 14, 28, 0.7);
             --card-border: rgba(168, 85, 247, 0.35);
             --input-bg: rgba(24, 20, 38, 0.85);
@@ -25,7 +25,7 @@
         
         body {
             font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: radial-gradient(1200px circle at 30% 20%, #1a132d 0%, #0d0a17 60%, #080711 100%);
+            background: radial-gradient(1200px circle at 30% 20%, rgb(26, 19, 45) 0%, rgb(13, 10, 23) 60%, rgb(8, 7, 17) 100%);
             color: var(--text-color);
             margin: 0;
             padding: 0;
@@ -115,8 +115,8 @@
         }
         
         button {
-            background: linear-gradient(90deg, #7c3aed, #a855f7);
-            color: #fff;
+            background: linear-gradient(90deg, rgb(124, 58, 237), rgb(168, 85, 247));
+            color: rgb(255, 255, 255);
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
@@ -197,7 +197,7 @@
         .progress-bar {
             height: 8px;
             border-radius: 8px;
-            background: linear-gradient(90deg, #7c3aed, #a855f7);
+            background: linear-gradient(90deg, rgb(124, 58, 237), rgb(168, 85, 247));
             width: 0%;
             transition: width 0.3s ease;
         }
@@ -213,7 +213,7 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            color: white;
+            color: rgb(255, 255, 255);
             padding: 15px 25px;
             border-radius: 12px;
             display: flex;
@@ -251,8 +251,8 @@
             padding: 14px 18px;
             border-radius: 12px;
             background: rgba(239, 68, 68, 0.1);
-            border: 1px solid #ef4444;
-            color: #fecaca;
+            border: 1px solid rgb(239, 68, 68);
+            color: rgb(254, 202, 202);
             display: flex;
             align-items: center;
             gap: 10px;
@@ -336,7 +336,7 @@
     <div class="container">
         <header>
             <a><h1>Secure Data Transfer</h1></a>
-            <p style="color: var(--muted-text);">Encrypt and send files securely.</p>
+            <p style="color: var(--muted-text);">Encrypt and send data securely.</p>
         </header>
         <section  id="#home">
             <div class="card sender-view" id="senderView">
@@ -398,7 +398,7 @@
             </form>
             {% if decrypted_text %}
             <div class="credentials-box" id="textResult" style="white-space: pre-wrap; position: relative; word-break: break-all; overflow-wrap: anywhere;">
-                <button id="copyDecryptedBtn" title="Copy" style="position:absolute; top:8px; right:8px; border:none; background:transparent; cursor:pointer; color:#334155;">
+                <button id="copyDecryptedBtn" title="Copy" style="position:absolute; top:8px; right:8px; border:none; background:transparent; cursor:pointer; color:rgb(51, 65, 85);">
                     <i class="fas fa-copy"></i>
                 </button>
                 {{ decrypted_text }}
@@ -415,7 +415,7 @@
             </form>
             {% if encrypted_text %}
             <div class="credentials-box" id="encryptedResult" style="white-space: pre-wrap; position: relative; word-break: break-all; overflow-wrap: anywhere;">
-                <button id="copyEncryptedBtn" title="Copy" style="position:absolute; top:8px; right:8px; border:none; background:transparent; cursor:pointer; color:#334155;">
+                <button id="copyEncryptedBtn" title="Copy" style="position:absolute; top:8px; right:8px; border:none; background:transparent; cursor:pointer; color:rgb(51, 65, 85);">
                     <i class="fas fa-copy"></i>
                 </button>
                 {{ encrypted_text }}
@@ -591,7 +591,7 @@
                     msg = errorMsg || msg;
                 }
                 progressText.textContent = 'Error: ' + msg;
-                progressBar.style.backgroundColor = '#ff3b30';
+                progressBar.style.backgroundColor = 'rgb(255, 59, 48)';
                 uploadBtn.disabled = false;
             }
         });
