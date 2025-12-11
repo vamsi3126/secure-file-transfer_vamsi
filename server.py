@@ -65,7 +65,15 @@ def get_transfer(code: str):
     return transfers.find_one({"access_code": code})
 
 
-def store_transfer(code: str, key_hash: str, filename: str, size_mb: float, encrypted: bytes):
+def store_transfer(
+    code: str,
+    key_hash: str,
+    filename: str,
+    size_mb: float,
+    encrypted: bytes,
+    downloads_remaining: int,
+    content_type: str,
+):
     transfers.insert_one(
         {
             "access_code": code,
@@ -74,6 +82,8 @@ def store_transfer(code: str, key_hash: str, filename: str, size_mb: float, encr
             "size_mb": size_mb,
             "encrypted_data": Binary(encrypted),
             "created_at": datetime.utcnow(),
+            "downloads_remaining": downloads_remaining,
+            "content_type": content_type,
         }
     )
 
@@ -103,22 +113,58 @@ def upload_form():
 
 @app.route("/upload", methods=["POST"])
 def upload_file():
-    if "file" not in request.files:
-        return jsonify({"error": "No file selected"}), 400
+    file_bytes = None
+    filename = None
+    has_file = False
+    has_text = False
 
-    file = request.files["file"]
-    if file.filename == "":
-        return jsonify({"error": "No file selected"}), 400
+    # Read file if present
+    if "file" in request.files:
+        f = request.files["file"]
+        if f and f.filename:
+            has_file = True
+            data = f.read()
+            if not data:
+                return jsonify({"error": "Empty file"}), 400
+            if len(data) > MAX_FILE_SIZE:
+                return jsonify({"error": "File exceeds 150MB limit"}), 413
+            file_bytes = data
+            filename = f.filename
 
-    file_bytes = file.read()
-    if not file_bytes:
-        return jsonify({"error": "Empty file"}), 400
-    if len(file_bytes) > MAX_FILE_SIZE:
-        return jsonify({"error": "File exceeds 150MB limit"}), 413
+    # Read text if present
+    text = request.form.get("text", "")
+    if text.strip():
+        has_text = True
+
+    # Validate exclusive choice: either file or text
+    if has_file and has_text:
+        return jsonify({"error": "Provide either a file or text, not both"}), 400
+
+    if not has_file and not has_text:
+        return jsonify({"error": "No content provided"}), 400
+
+    if not has_file and has_text:
+        data = text.encode("utf-8")
+        if len(data) > MAX_FILE_SIZE:
+            return jsonify({"error": "Text exceeds 150MB limit"}), 413
+        file_bytes = data
+        filename = "message.txt"
+        content_type = "text"
+    else:
+        content_type = "file"
 
     try:
         cleanup_expired_records()
+        raw_max = request.form.get("max_downloads", "1")
+        try:
+            max_downloads = int(raw_max)
+            if max_downloads < 1:
+                max_downloads = 1
+        except ValueError:
+            max_downloads = 1
+
         access_code = generate_unique_code()
+
         decryption_key = generate_pin()
         derived_key = derive_key(decryption_key)
         cipher = Fernet(derived_key)
@@ -128,19 +174,22 @@ def upload_file():
         store_transfer(
             code=access_code,
             key_hash=hash_key(decryption_key),
-            filename=file.filename,
+            filename=filename,
             size_mb=size_mb,
             encrypted=encrypted_data,
+            downloads_remaining=max_downloads,
+            content_type=content_type,
         )
 
         return jsonify(
             {
                 "success": True,
-                "file": file.filename,
+                "file": filename,
                 "size_mb": size_mb,
                 "code": access_code,
                 "key": decryption_key,
-                "warning": "Files expire in 24 hours or after one successful download.",
+                "download_limit": max_downloads,
+                "warning": "Files expire in 24 hours or when downloads are exhausted.",
             }
         )
     except PyMongoError as db_err:
@@ -151,27 +200,37 @@ def upload_file():
         return jsonify({"error": f"Upload failed: {exc}"}), 500
 
 
-@app.route("/download", methods=["POST"])
+@app.route("/download", methods=["POST", "GET"])
 def download_file():
-    code = request.form.get("code", "").strip()
-    key = request.form.get("key", "").strip()
+    if request.method == "GET":
+        code = request.args.get("code", "").strip()
+        key = request.args.get("key", "").strip()
+        if not code or not key:
+            return render_template("index.html")
+    else:
+        code = request.form.get("code", "").strip()
+        key = request.form.get("key", "").strip()
 
     if not code or not key:
         return render_template("index.html", error="Both code and key are required")
-
-    record = get_transfer(code)
-    if not record:
-        return render_template("index.html", error="Invalid or expired access code")
-
-    created_at: datetime = record.get("created_at", datetime.utcnow())
-    if created_at < datetime.utcnow() - timedelta(hours=24):
-        delete_transfer(code)
-        return render_template("index.html", error="File expired")
-
-    if hash_key(key) != record["key_hash"]:
-        return render_template("index.html", error="Invalid decryption key")
-
     try:
+        record = get_transfer(code)
+        if not record:
+            return render_template("index.html", error="Invalid or expired access code")
+
+        created_at: datetime = record.get("created_at", datetime.utcnow())
+        if created_at < datetime.utcnow() - timedelta(hours=24):
+            delete_transfer(code)
+            return render_template("index.html", error="File expired")
+
+        if hash_key(key) != record["key_hash"]:
+            return render_template("index.html", error="Invalid decryption key")
+
+        remaining = int(record.get("downloads_remaining", 1))
+        if remaining <= 0:
+            delete_transfer(code)
+            return render_template("index.html", error="Download limit reached")
+
         encrypted_bytes = bytes(record["encrypted_data"])
         derived_key = derive_key(key)
         cipher = Fernet(derived_key)
@@ -180,17 +239,86 @@ def download_file():
         buffer = io.BytesIO(decrypted_data)
         buffer.seek(0)
 
-        delete_transfer(code)
+        new_remaining = remaining - 1
+        if new_remaining <= 0:
+            delete_transfer(code)
+        else:
+            transfers.update_one({"access_code": code}, {"$set": {"downloads_remaining": new_remaining}})
 
-        return send_file(
-            buffer,
-            as_attachment=True,
-            download_name=record["filename"],
-        )
+        if record.get("content_type") == "text":
+            text_value = buffer.getvalue().decode("utf-8", errors="replace")
+            return render_template("index.html", decrypted_text=text_value)
+        else:
+            return send_file(
+                buffer,
+                as_attachment=True,
+                download_name=record["filename"],
+            )
+    except PyMongoError as db_err:
+        app.logger.exception("Database error on download")
+        return render_template("index.html", error="Database connection error")
     except Exception as exc:
         app.logger.exception("Download failed")
         return render_template("index.html", error=f"Download failed: {exc}")
 
+
+@app.route("/download_encrypted", methods=["POST", "GET"])
+def download_encrypted():
+    if request.method != "POST":
+        return render_template("index.html")
+    code = request.form.get("code", "").strip()
+    if not code:
+        return render_template("index.html", error="Access code is required")
+    try:
+        record = get_transfer(code)
+        if not record:
+            return render_template("index.html", error="Invalid or expired access code")
+
+        created_at: datetime = record.get("created_at", datetime.utcnow())
+        if created_at < datetime.utcnow() - timedelta(hours=24):
+            delete_transfer(code)
+            return render_template("index.html", error="File expired")
+
+        remaining = int(record.get("downloads_remaining", 1))
+        if remaining <= 0:
+            delete_transfer(code)
+            return render_template("index.html", error="Download limit reached")
+
+        encrypted_bytes = bytes(record["encrypted_data"])
+        buffer = io.BytesIO(encrypted_bytes)
+        buffer.seek(0)
+
+        new_remaining = remaining - 1
+        if new_remaining <= 0:
+            delete_transfer(code)
+        else:
+            transfers.update_one({"access_code": code}, {"$set": {"downloads_remaining": new_remaining}})
+
+        if record.get("content_type") == "text":
+            import base64 as _b64
+            encoded = _b64.b64encode(buffer.getvalue()).decode("ascii")
+            return render_template("index.html", encrypted_text=encoded)
+        else:
+            name = f"{record['filename']}.encrypted"
+            return send_file(
+                buffer,
+                as_attachment=True,
+                download_name=name,
+            )
+    except PyMongoError as db_err:
+        app.logger.exception("Database error on encrypted download")
+        return render_template("index.html", error="Database connection error")
+    except Exception as exc:
+        app.logger.exception("Encrypted download failed")
+        return render_template("index.html", error=f"Download failed: {exc}")
+
+@app.route("/db_health")
+def db_health():
+    try:
+        mongo_client.admin.command("ping")
+        return jsonify({"ok": True})
+    except Exception as exc:
+        return jsonify({"ok": False, "error": str(exc)}), 500
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=False)
