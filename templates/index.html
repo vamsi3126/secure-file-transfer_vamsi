@@ -3,11 +3,16 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
     <title>Secure File Drop</title>
+=======
+    <title>Secure File Transfer</title>
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
     <link href="https://fonts.googleapis.com/css2?family=SF+Pro+Display:wght@300;400;500;600&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
         :root {
+<<<<<<< HEAD
             --primary-color: rgb(168, 85, 247);
             --primary-hover: rgb(124, 58, 237);
             --text-color: rgb(248, 250, 252);
@@ -21,12 +26,29 @@
             --error-bg: rgba(239, 68, 68, 0.95);
             --info-bg: rgba(31, 24, 56, 0.6);
             --glow: 0 0 20px rgba(168, 85, 247, 0.35), 0 0 40px rgba(168, 85, 247, 0.25);
+=======
+            --primary-color: rgb(0, 168, 120);
+            --primary-hover: rgb(0, 151, 108);
+            --text-light: rgb(245, 245, 247);
+            --card-bg: rgba(8, 30, 22, 0.7);
+            --input-bg: rgba(12, 40, 30, 0.6);
+            --input-border: rgba(179, 255, 217, 0.2);
+            --input-hover: rgba(22, 70, 50, 0.7);
+            --success-bg: rgba(46, 204, 113, 0.9);
+            --error-bg: rgba(255, 82, 82, 0.9);
+            --info-bg: rgba(0, 168, 120, 0.15);
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
         }
         
         body {
             font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+<<<<<<< HEAD
             background: radial-gradient(1200px circle at 30% 20%, rgb(26, 19, 45) 0%, rgb(13, 10, 23) 60%, rgb(8, 7, 17) 100%);
             color: var(--text-color);
+=======
+            background: radial-gradient(circle at top, rgb(7, 94, 63), rgb(2, 35, 24)) fixed;
+            color: var(--text-light);
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             margin: 0;
             padding: 0;
             line-height: 1.5;
@@ -34,8 +56,13 @@
         }
         
         .container {
+<<<<<<< HEAD
             width: min(80vw, 1100px);
             margin: 40px auto 80px;
+=======
+            width: min(70vw, 960px);
+            margin: 24px auto 60px;
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             padding: 0 20px;
         }
         
@@ -59,9 +86,15 @@
             border-radius: 999px;
             font-size: 14px;
             text-decoration: none;
+<<<<<<< HEAD
             color: var(--text-color);
             background: var(--input-bg);
             border: 1px solid var(--input-border);
+=======
+            color: rgb(245, 245, 247);
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(179, 255, 217, 0.3);
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             transition: transform 0.2s ease, border-color 0.2s ease;
         }
 
@@ -71,12 +104,22 @@
         }
         
         h1 {
+<<<<<<< HEAD
             font-size: 36px;
             font-weight: 700;
             margin: 0;
             letter-spacing: -0.5px;
             color: var(--text-color);
             text-shadow: var(--glow);
+=======
+            font-size: 40px;
+            font-weight: 600;
+            margin: 0;
+            letter-spacing: -0.5px;
+            background: linear-gradient(45deg, rgb(0, 219, 144), rgb(127, 255, 194));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
         }
         
         h2 {
@@ -87,12 +130,20 @@
         
         .card {
             background: var(--card-bg);
+<<<<<<< HEAD
             border: 1px solid var(--card-border);
             border-radius: 22px;
             padding: 32px;
             margin-bottom: 30px;
             box-shadow: var(--glow);
             backdrop-filter: blur(6px);
+=======
+            backdrop-filter: blur(20px);
+            border: 1px solid var(--input-border);
+            border-radius: 18px;
+            padding: 30px;
+            margin-bottom: 30px;
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
         }
         
         form {
@@ -100,7 +151,11 @@
             flex-direction: column;
         }
         
+<<<<<<< HEAD
         input, button, textarea {
+=======
+        input, button {
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             padding: 14px 20px;
             border-radius: 12px;
             border: none;
@@ -108,19 +163,33 @@
             margin-bottom: 16px;
         }
         
+<<<<<<< HEAD
         input, textarea {
             background: var(--input-bg);
             color: var(--text-color);
+=======
+        input {
+            background: var(--input-bg);
+            color: var(--text-light);
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             border: 1px solid var(--input-border);
         }
         
         button {
+<<<<<<< HEAD
             background: linear-gradient(90deg, rgb(124, 58, 237), rgb(168, 85, 247));
             color: #fff;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.2s ease;
             box-shadow: var(--glow);
+=======
+            background: var(--primary-color);
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
         }
         
         button:hover:not(:disabled) {
@@ -142,7 +211,11 @@
             display: block;
             padding: 40px 20px;
             background: var(--input-bg);
+<<<<<<< HEAD
             color: var(--muted-text);
+=======
+            color: var(--text-light);
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             border-radius: 12px;
             border: 2px dashed var(--input-border);
             text-align: center;
@@ -169,8 +242,12 @@
         
         .file-upload-label .size-info {
             font-size: 13px;
+<<<<<<< HEAD
             color: var(--muted-text);
             opacity: 0.8;
+=======
+            opacity: 0.6;
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
         }
         
         .file-selection {
@@ -197,7 +274,11 @@
         .progress-bar {
             height: 8px;
             border-radius: 8px;
+<<<<<<< HEAD
             background: linear-gradient(90deg, rgb(124, 58, 237), rgb(168, 85, 247));
+=======
+            background: linear-gradient(90deg, #0071e3, #7bdcff);
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             width: 0%;
             transition: width 0.3s ease;
         }
@@ -206,7 +287,11 @@
             text-align: center;
             margin-top: 5px;
             font-size: 14px;
+<<<<<<< HEAD
             color: var(--muted-text);
+=======
+            color: rgba(255, 255, 255, 0.6);
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
         }
         
         .notification {
@@ -238,21 +323,36 @@
         }
         
         .credentials-box {
+<<<<<<< HEAD
             background: rgba(24, 20, 38, 0.6);
             padding: 16px;
             border-radius: 12px;
             margin-top: 20px;
             border: 1px solid var(--card-border);
             box-shadow: var(--glow);
+=======
+            background: rgba(0, 0, 0, 0.25);
+            padding: 16px;
+            border-radius: 12px;
+            margin-top: 20px;
+            border-left: 4px solid #0071e3;
+            backdrop-filter: blur(10px);
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
         }
 
         .server-error {
             margin-top: 16px;
             padding: 14px 18px;
             border-radius: 12px;
+<<<<<<< HEAD
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid rgb(239, 68, 68);
             color: rgb(254, 202, 202);
+=======
+            background: rgba(255, 59, 48, 0.15);
+            border: 1px solid rgba(255, 59, 48, 0.4);
+            color: #ffb3ad;
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             display: flex;
             align-items: center;
             gap: 10px;
@@ -264,8 +364,13 @@
             border-radius: 12px;
             margin-top: 16px;
             font-size: 14px;
+<<<<<<< HEAD
             color: var(--muted-text);
             border: 1px solid var(--card-border);
+=======
+            color: rgba(255, 255, 255, 0.7);
+            border-left: 3px solid var(--primary-color);
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             line-height: 1.5;
         }
         
@@ -277,6 +382,7 @@
         footer {
             text-align: center;
             margin-top: 60px;
+<<<<<<< HEAD
             color: var(--muted-text);
             font-size: 14px;
         }
@@ -300,6 +406,11 @@
         }
 
         .hidden { display: none; }
+=======
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 14px;
+        }
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
         
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
@@ -335,6 +446,7 @@
 <body>
     <div class="container">
         <header>
+<<<<<<< HEAD
             <a><h1>Secure Data Transfer</h1></a>
             <p style="color: var(--muted-text);">Encrypt and send files securely.</p>
         </header>
@@ -392,10 +504,65 @@
                 <input type="text" name="code" placeholder="Enter Access Code" required>
                 <label style="font-size:14px; font-weight:500;">Decryption PIN</label>
                 <input type="text" name="key" placeholder="Enter Decryption PIN" required>
+=======
+            <div class="top-bar">
+                <a class="developer-link" href="https://portfolio-new-drab-pi.vercel.app/" target="_blank" rel="noopener noreferrer">
+                    <i class="fas fa-user-astronaut"></i>
+                    Meet the developer
+                </a>
+            </div>
+            <h1>Secure File Transfer</h1>
+            <p>Private file sharing with one-time access</p>
+        </header>
+        
+        <div class="card">
+            <h2>Upload File</h2>
+            <form id="uploadForm" enctype="multipart/form-data">
+                <div class="file-upload-area">
+                    <input type="file" name="file" id="fileInput" required style="display: none;" onchange="displayFileName()">
+                    <label for="fileInput" class="file-upload-label">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span class="instructions">Drag & drop files here or click to browse</span>
+                        <span class="size-info">Maximum file size: 150MB</span>
+                    </label>
+                </div>
+                
+                <div class="file-selection" id="fileSelection">
+                    <i class="fas fa-file"></i>
+                    <span id="selectedFileName"></span>
+                    <span id="fileSize" style="margin-left: auto; color: rgba(255,255,255,0.5); font-size: 13px;"></span>
+                </div>
+                
+                <div class="progress-container" id="progressContainer">
+                    <div class="progress-bar" id="progressBar"></div>
+                    <div class="progress-text" id="progressText">0% uploaded</div>
+                </div>
+                
+                <button type="submit" id="uploadBtn">
+                    <i class="fas fa-lock"></i> Encrypt & Upload
+                </button>
+                
+                <div class="file-info">
+                    <i class="fas fa-info-circle"></i>
+                    Files are automatically deleted after 24 hours. For important files, 
+                    please download immediately as they may be lost if the server restarts.
+                </div>
+                
+                <div id="uploadResult"></div>
+            </form>
+        </div>
+        
+        <div class="card">
+            <h2>Download File</h2>
+            <form action="/download" method="post">
+                <input type="text" name="code" placeholder="Access Code" required>
+                <input type="text" name="key" placeholder="Decryption PIN" required>
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
                 <button type="submit">
                     <i class="fas fa-download"></i> Decrypt & Download
                 </button>
             </form>
+<<<<<<< HEAD
             {% if decrypted_text %}
             <div class="credentials-box" id="textResult" style="white-space: pre-wrap; position: relative; word-break: break-all; overflow-wrap: anywhere;">
                 <button id="copyDecryptedBtn" title="Copy" style="position:absolute; top:8px; right:8px; border:none; background:transparent; cursor:pointer; color: rgb(51, 65, 85);">
@@ -421,6 +588,8 @@
                 {{ encrypted_text }}
             </div>
             {% endif %}
+=======
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             {% if error %}
             <div class="server-error">
                 <i class="fas fa-exclamation-triangle"></i>
@@ -428,9 +597,15 @@
             </div>
             {% endif %}
         </div>
+<<<<<<< HEAD
         </section>
         <footer>
             <a href="#home">Secure Data Tarnsfer</a>
+=======
+        
+        <footer>
+            <p>Secure File Transfer</p>
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
         </footer>
     </div>
 
@@ -445,7 +620,11 @@
     </div>
 
     <script>
+<<<<<<< HEAD
         const MAX_FILE_SIZE = 150 * 1024 * 1024;
+=======
+        const MAX_FILE_SIZE = 150 * 1024 * 1024; // 150MB in bytes
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
 
         // Display selected filename and size
         function displayFileName() {
@@ -480,8 +659,11 @@
             
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
+<<<<<<< HEAD
             const textArea = document.getElementById('textInput');
             const textValue = (textArea && textArea.value || '').trim();
+=======
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             const uploadBtn = document.getElementById('uploadBtn');
             const progressContainer = document.getElementById('progressContainer');
             const progressBar = document.getElementById('progressBar');
@@ -493,7 +675,12 @@
             successNotification.classList.remove('show');
             sizeErrorNotification.classList.remove('show');
             
+<<<<<<< HEAD
             if (file && file.size > MAX_FILE_SIZE) {
+=======
+            // File size validation
+            if (file.size > MAX_FILE_SIZE) {
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
                 sizeErrorNotification.classList.add('show');
                 setTimeout(() => sizeErrorNotification.classList.remove('show'), 3000);
                 return;
@@ -505,6 +692,7 @@
             progressContainer.style.display = 'block';
             
             const formData = new FormData();
+<<<<<<< HEAD
             if (file && !textValue) {
                 formData.append('file', file);
             } else if (!file && textValue) {
@@ -523,6 +711,9 @@
                 handleUploadError('Provide either a file or text, not both');
                 return;
             }
+=======
+            formData.append('file', file);
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
             
             try {
                 const xhr = new XMLHttpRequest();
@@ -545,6 +736,10 @@
                             successNotification.classList.remove('show');
                         }, 3000);
                         
+<<<<<<< HEAD
+=======
+                        // Display credentials
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
                         document.getElementById('uploadResult').innerHTML = `
                             <div class="credentials-box">
                                 <p><strong><i class="fas fa-key"></i> Access Code:</strong> ${response.code}</p>
@@ -555,6 +750,7 @@
                             </div>
                         `;
                         
+<<<<<<< HEAD
                         const recipientView = document.getElementById('recipientView');
                         const codeInput = document.querySelector('#recipientView input[name="code"]');
                         const keyInput = document.querySelector('#recipientView input[name="key"]');
@@ -562,6 +758,8 @@
                         if (keyInput) keyInput.value = response.key;
                         if (recipientView) recipientView.scrollIntoView({ behavior: 'smooth' });
 
+=======
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
                         // Reset UI
                         uploadBtn.innerHTML = '<i class="fas fa-check"></i> Upload Complete';
                         progressText.textContent = 'Upload complete!';
@@ -583,6 +781,7 @@
             
             function handleUploadError(errorMsg) {
                 uploadBtn.innerHTML = '<i class="fas fa-times"></i> Upload Failed';
+<<<<<<< HEAD
                 let message = '';
                 try {
                     const parsed = typeof errorMsg === 'string' ? JSON.parse(errorMsg) : errorMsg;
@@ -592,6 +791,10 @@
                 }
                 progressText.textContent = 'Error: ' + (message || 'Upload failed');
                 progressBar.style.backgroundColor = 'rgb(239, 68, 68)';
+=======
+                progressText.textContent = "Error: " + (JSON.parse(errorMsg)?.error || errorMsg || 'Upload failed');
+                progressBar.style.backgroundColor = '#ff3b30';
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
                 uploadBtn.disabled = false;
             }
         });
@@ -599,6 +802,7 @@
         // Fixed drag and drop functionality
         const fileUploadLabel = document.querySelector('.file-upload-label');
         const fileInput = document.getElementById('fileInput');
+<<<<<<< HEAD
         const recipientView = document.getElementById('recipientView');
         const copyDecryptedBtn = document.getElementById('copyDecryptedBtn');
         const copyEncryptedBtn = document.getElementById('copyEncryptedBtn');
@@ -614,6 +818,8 @@
                 if (el) navigator.clipboard.writeText(el.textContent.trim());
             });
         }
+=======
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
 
         fileUploadLabel.addEventListener('dragover', (e) => {
             e.preventDefault();
@@ -637,8 +843,14 @@
                 displayFileName(); // Update UI to show selected file
             }
         });
+<<<<<<< HEAD
 
         // Views shown on the same page; no toggle needed
     </script>
 </body>
 </html>
+=======
+    </script>
+</body>
+</html>
+>>>>>>> ecbd216ee909525ce21fad51f9f4a6b66981aa66
