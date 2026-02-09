@@ -205,97 +205,92 @@ def upload_file():
         return jsonify({"error": f"Upload failed: {exc}"}), 500
 
 
-@app.route("/download", methods=["POST", "GET"])
-def download_file():
-    if request.method != "POST":
-        return render_template("index.html")
-    code = request.form.get("code", "").strip()
-    key = request.form.get("key", "").strip()  # PIN is optional
-
+def _process_download(code: str, key: str, is_send_file: bool = True):
+    """Shared logic for POST and GET download. Returns (response, None) or (None, error_msg)."""
     if not code:
-        return render_template("index.html", error="Access code is required")
-    
+        return None, "Access code is required"
     try:
         record = get_transfer(code)
         if not record:
-            return render_template("index.html", error="Invalid or expired access code")
+            return None, "Invalid or expired access code"
 
-        created_at: datetime = record.get("created_at", datetime.utcnow())
+        created_at = record.get("created_at", datetime.utcnow())
         if created_at < datetime.utcnow() - timedelta(hours=24):
             delete_transfer(code)
-            return render_template("index.html", error="File expired")
+            return None, "File expired"
 
         remaining = int(record.get("downloads_remaining", 1))
         if remaining <= 0:
             delete_transfer(code)
-            return render_template("index.html", error="Download limit reached")
+            return None, "Download limit reached"
 
         encrypted_bytes = bytes(record["encrypted_data"])
 
-        # Mode 1: Access code only - return encrypted file (.encrypted)
+        # Mode 1: Access code only - return encrypted file
         if not key:
-            # Atomic decrement - only succeeds if downloads_remaining > 0
             result = transfers.update_one(
                 {"access_code": code, "downloads_remaining": {"$gt": 0}},
                 {"$inc": {"downloads_remaining": -1}},
             )
             if result.matched_count == 0:
-                return render_template("index.html", error="Download limit reached")
-
+                return None, "Download limit reached"
             updated = get_transfer(code)
             if updated and int(updated.get("downloads_remaining", 0)) <= 0:
                 delete_transfer(code)
-
             buffer = io.BytesIO(encrypted_bytes)
             buffer.seek(0)
+            filename = record.get("encrypted_filename", record["filename"] + ".encrypted")
+            return (send_file(buffer, as_attachment=True, download_name=filename), None)
 
-            # Return encrypted file with .encrypted extension
-            encrypted_filename = record.get("encrypted_filename", record["filename"] + ".encrypted")
-            return send_file(
-                buffer,
-                as_attachment=True,
-                download_name=encrypted_filename,
-            )
-
-        # Mode 2: Access code + PIN - decrypt and return original file
+        # Mode 2: Access code + PIN - decrypt and return
         if hash_key(key) != record["key_hash"]:
-            return render_template("index.html", error="Invalid decryption PIN")
-
-        # Decrypt the file
+            return None, "Invalid decryption PIN"
         derived_key = derive_key(key)
         cipher = Fernet(derived_key)
         try:
             decrypted_data = cipher.decrypt(encrypted_bytes)
-        except Exception as decrypt_err:
-            return render_template("index.html", error="Decryption failed. Invalid PIN.")
-
-        buffer = io.BytesIO(decrypted_data)
-        buffer.seek(0)
-
-        # Atomic decrement - only succeeds if downloads_remaining > 0
+        except Exception:
+            return None, "Decryption failed. Invalid PIN."
         result = transfers.update_one(
             {"access_code": code, "downloads_remaining": {"$gt": 0}},
             {"$inc": {"downloads_remaining": -1}},
         )
         if result.matched_count == 0:
-            return render_template("index.html", error="Download limit reached")
-
+            return None, "Download limit reached"
         updated = get_transfer(code)
         if updated and int(updated.get("downloads_remaining", 0)) <= 0:
             delete_transfer(code)
-
-        # Return decrypted file (both text and files are downloaded)
-        return send_file(
-            buffer,
-            as_attachment=True,
-            download_name=record["filename"],  # Original filename
-        )
-    except PyMongoError as db_err:
-        app.logger.exception("Database error on download")
-        return render_template("index.html", error="Database connection error")
+        buffer = io.BytesIO(decrypted_data)
+        buffer.seek(0)
+        return (send_file(buffer, as_attachment=True, download_name=record["filename"]), None)
+    except PyMongoError:
+        return None, "Database connection error"
     except Exception as exc:
-        app.logger.exception("Download failed")
-        return render_template("index.html", error=f"Download failed: {exc}")
+        return None, f"Download failed: {exc}"
+
+
+@app.route("/download", methods=["POST", "GET"])
+def download_file():
+    if request.method == "GET":
+        code = request.args.get("code", "").strip()
+        key = request.args.get("key", "").strip()
+        if not code:
+            return render_template("index.html")
+        resp, err = _process_download(code, key)
+        if err:
+            return render_template("index.html", error=err)
+        return resp
+
+    code = request.form.get("code", "").strip()
+    key = request.form.get("key", "").strip()
+
+    if not code:
+        return render_template("index.html", error="Access code is required")
+
+    resp, err = _process_download(code, key)
+    if err:
+        return render_template("index.html", error=err)
+    return resp
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=False)

@@ -246,6 +246,58 @@
             box-shadow: var(--glow);
         }
 
+        .download-link-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+
+        .download-link {
+            flex: 1;
+            min-width: 0;
+            padding: 12px 16px;
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            color: var(--primary-color);
+            font-size: 13px;
+            word-break: break-all;
+            text-decoration: none;
+        }
+
+        .download-link:hover {
+            border-color: var(--primary-color);
+        }
+
+        .nfc-share-btn, .copy-link-btn {
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid var(--card-border);
+            background: linear-gradient(90deg, rgb(124, 58, 237), rgb(168, 85, 247));
+            color: white;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            white-space: nowrap;
+            transition: all 0.2s ease;
+        }
+
+        .nfc-share-btn:hover, .copy-link-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--glow);
+        }
+
+        .nfc-share-btn:disabled, .copy-link-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
         .server-error {
             margin-top: 16px;
             padding: 14px 18px;
@@ -447,6 +499,56 @@
     <script>
         const MAX_FILE_SIZE = 150 * 1024 * 1024;
 
+        // Share link via NFC or system share (transfer without internet between devices)
+        async function shareViaNfc(url, filename) {
+            const btn = document.getElementById('nfcShareBtn');
+            if (btn) btn.disabled = true;
+            try {
+                // 1. Try Web Share API (Android: Nearby Share, iOS: AirDrop, etc.)
+                if (navigator.share) {
+                    await navigator.share({
+                        title: 'Secure File: ' + (filename || 'Download'),
+                        text: 'Download your secure file',
+                        url: url
+                    });
+                    if (btn) btn.innerHTML = '<i class="fas fa-check"></i> Shared!';
+                    setTimeout(() => {
+                        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-broadcast-tower"></i> NFC Share'; }
+                    }, 2000);
+                    return;
+                }
+                // 2. Try Web NFC (write URL to NFC tag - tap phone to tag)
+                if ('NDEFReader' in window) {
+                    const ndef = new NDEFReader();
+                    await ndef.write({
+                        records: [{ recordType: "url", data: url }]
+                    });
+                    if (btn) btn.innerHTML = '<i class="fas fa-check"></i> Written to NFC!';
+                    setTimeout(() => {
+                        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-broadcast-tower"></i> NFC Share'; }
+                    }, 2000);
+                    return;
+                }
+                // 3. Fallback: copy to clipboard
+                await navigator.clipboard.writeText(url);
+                if (btn) btn.innerHTML = '<i class="fas fa-check"></i> Link copied!';
+                setTimeout(() => {
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-broadcast-tower"></i> NFC Share'; }
+                }, 2000);
+            } catch (err) {
+                if (btn) btn.disabled = false;
+                if (btn) btn.innerHTML = '<i class="fas fa-broadcast-tower"></i> NFC Share';
+                if (err.name !== 'AbortError') {
+                    try {
+                        await navigator.clipboard.writeText(url);
+                        alert('Link copied to clipboard. Share it manually.');
+                    } catch (_) {
+                        alert('Share failed. Copy the link manually.');
+                    }
+                }
+            }
+        }
+
         // Handle file change (when file is selected or dropped)
         function handleFileChange() {
             // Clear previous upload result when new file is selected
@@ -601,15 +703,36 @@
                             successNotification.classList.remove('show');
                         }, 3000);
                         
+                        const downloadUrl = window.location.origin + '/download?code=' + encodeURIComponent(response.code) + '&key=' + encodeURIComponent(response.key);
                         document.getElementById('uploadResult').innerHTML = `
                             <div class="credentials-box">
                                 <p><strong><i class="fas fa-key"></i> Access Code:</strong> ${response.code}</p>
                                 <p><strong><i class="fas fa-lock"></i> Decryption PIN:</strong> ${response.key}</p>
-                                <p style="margin-top: 12px; font-size: 14px; opacity: 0.7;">
-                                    <i class="fas fa-info-circle"></i> Save these credentials - they will only work once.
+                                <p style="margin-top: 12px; font-size: 14px; font-weight: 500;">
+                                    <i class="fas fa-link"></i> Download link (decrypted):
+                                </p>
+                                <div class="download-link-row">
+                                    <a href="${downloadUrl}" class="download-link" target="_blank" rel="noopener" title="Open to download">${downloadUrl}</a>
+                                    <button type="button" class="nfc-share-btn" id="nfcShareBtn" title="Share via NFC or system share">
+                                        <i class="fas fa-broadcast-tower"></i> NFC Share
+                                    </button>
+                                    <button type="button" class="copy-link-btn" id="copyLinkBtn" title="Copy link">
+                                        <i class="fas fa-copy"></i> Copy
+                                    </button>
+                                </div>
+                                <p style="margin-top: 12px; font-size: 13px; opacity: 0.7;">
+                                    <i class="fas fa-info-circle"></i> Share this link via NFC to transfer without internet. Recipient opens link when online to download.
                                 </p>
                             </div>
                         `;
+                        document.getElementById('copyLinkBtn').addEventListener('click', () => {
+                            navigator.clipboard.writeText(downloadUrl);
+                            const btn = document.getElementById('copyLinkBtn');
+                            const orig = btn.innerHTML;
+                            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                            setTimeout(() => { btn.innerHTML = orig; }, 2000);
+                        });
+                        document.getElementById('nfcShareBtn').addEventListener('click', () => shareViaNfc(downloadUrl, response.file));
                         
                         const recipientView = document.getElementById('recipientView');
                         const codeInput = document.querySelector('#recipientView input[name="code"]');
