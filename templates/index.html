@@ -343,7 +343,7 @@
                 <h2 style="margin-top:0;">Upload</h2>
                 <form id="uploadForm" enctype="multipart/form-data">
                     <div class="file-upload-area">
-                    <input type="file" name="file" id="fileInput" style="display: none;" onchange="displayFileName()">
+                    <input type="file" name="file" id="fileInput" style="display: none;" onchange="handleFileChange()">
                         <label for="fileInput" class="file-upload-label">
                             <i class="fas fa-cloud-upload-alt"></i>
                             <span class="instructions">Drag & drop your file here, or click to browse</span>
@@ -447,6 +447,15 @@
     <script>
         const MAX_FILE_SIZE = 150 * 1024 * 1024;
 
+        // Handle file change (when file is selected or dropped)
+        function handleFileChange() {
+            // Clear previous upload result when new file is selected
+            const uploadResult = document.getElementById('uploadResult');
+            if (uploadResult) uploadResult.innerHTML = '';
+            
+            displayFileName();
+        }
+
         // Display selected filename and size
         function displayFileName() {
             const fileInput = document.getElementById('fileInput');
@@ -462,6 +471,43 @@
             } else {
                 fileSelection.style.display = 'none';
             }
+        }
+
+        // Reset upload form to initial state
+        function resetUploadForm() {
+            // Reset file input
+            const fileInput = document.getElementById('fileInput');
+            fileInput.value = '';
+            
+            // Reset text area
+            const textArea = document.getElementById('textInput');
+            if (textArea) textArea.value = '';
+            
+            // Hide file selection
+            const fileSelection = document.getElementById('fileSelection');
+            if (fileSelection) fileSelection.style.display = 'none';
+            
+            // Reset progress bar
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+            if (progressContainer) progressContainer.style.display = 'none';
+            if (progressBar) {
+                progressBar.style.width = '0%';
+                progressBar.style.backgroundColor = '';
+            }
+            if (progressText) progressText.textContent = '0% uploaded';
+            
+            // Reset upload button
+            const uploadBtn = document.getElementById('uploadBtn');
+            if (uploadBtn) {
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '<i class="fas fa-lock"></i> Encrypt & Upload File';
+            }
+            
+            // Clear upload result
+            const uploadResult = document.getElementById('uploadResult');
+            if (uploadResult) uploadResult.innerHTML = '';
         }
 
         // Format file size
@@ -565,6 +611,11 @@
                         // Reset UI
                         uploadBtn.innerHTML = '<i class="fas fa-check"></i> Upload Complete';
                         progressText.textContent = 'Upload complete!';
+                        
+                        // Auto-refresh form after successful upload
+                        setTimeout(() => {
+                            resetUploadForm();
+                        }, 2000); // Wait 2 seconds before resetting
                     } else {
                         handleUploadError(xhr.responseText);
                     }
@@ -634,7 +685,7 @@
             // Handle dropped files
             if (e.dataTransfer.files.length) {
                 fileInput.files = e.dataTransfer.files;
-                displayFileName(); // Update UI to show selected file
+                handleFileChange(); // Update UI and clear previous results
             }
         });
 
