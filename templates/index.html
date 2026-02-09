@@ -457,28 +457,7 @@
             </div>
             {% endif %}
 
-            <h3 style="margin-top:24px;">Get Encrypted Data</h3>
-            <form action="/download" method="post">
-                <label style="font-size:14px; font-weight:500;">Access Code</label>
-                <input type="text" name="code" placeholder="Enter Access Code" required>
-                <button type="submit">
-                    <i class="fas fa-shield-alt"></i> Get Encrypted Data
-                </button>
-            </form>
-            {% if encrypted_text %}
-            <div class="credentials-box" id="encryptedResult" style="white-space: pre-wrap; position: relative; word-break: break-all; overflow-wrap: anywhere;">
-                <button id="copyEncryptedBtn" title="Copy" style="position:absolute; top:8px; right:8px; border:none; background:transparent; cursor:pointer; color:rgb(51, 65, 85);">
-                    <i class="fas fa-copy"></i>
-                </button>
-                {{ encrypted_text }}
-            </div>
-            {% endif %}
-            {% if error %}
-            <div class="server-error">
-                <i class="fas fa-exclamation-triangle"></i>
-                <span>{{ error }}</span>
-            </div>
-            {% endif %}
+            
         </div>
         </section>
         <footer>
