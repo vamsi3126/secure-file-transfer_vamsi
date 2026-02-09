@@ -611,9 +611,7 @@
                 uploadBtn.innerHTML = '<i class="fas fa-lock"></i> Encrypt & Upload File';
             }
             
-            // Clear upload result
-            const uploadResult = document.getElementById('uploadResult');
-            if (uploadResult) uploadResult.innerHTML = '';
+            // Keep upload result (link + NFC share) visible - only clear when new file is selected
         }
 
         // Format file size
