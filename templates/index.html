@@ -698,8 +698,11 @@
                                     <i class="fas fa-link"></i> Download link (decrypted):
                                 </p>
                                 <div class="download-link-row">
-                                    <a href="${downloadUrl}" class="download-link" target="_blank" rel="noopener" title="Open to download">${downloadUrl}</a>
-                                    <button type="button" class="nfc-share-btn" id="nfcShareBtn" title="Share via NFC or system share">
+                                    <a href="${downloadUrl}" class="download-link" download="${(response.file || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')}" title="Click to download">${downloadUrl}</a>
+                                    <button type="button" class="copy-link-btn" id="downloadBtn" title="Download file now">
+                                        <i class="fas fa-download"></i> Download
+                                    </button>
+                                    <button type="button" class="nfc-share-btn" id="nfcShareBtn" title="Share via NFC">
                                         <i class="fas fa-broadcast-tower"></i> NFC Share
                                     </button>
                                     <button type="button" class="copy-link-btn" id="copyLinkBtn" title="Copy link">
@@ -717,6 +720,24 @@
                             const orig = btn.innerHTML;
                             btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
                             setTimeout(() => { btn.innerHTML = orig; }, 2000);
+                        });
+                        document.getElementById('downloadBtn').addEventListener('click', async () => {
+                            const btn = document.getElementById('downloadBtn');
+                            btn.disabled = true;
+                            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+                            try {
+                                const res = await fetch(downloadUrl);
+                                const blob = await res.blob();
+                                const a = document.createElement('a');
+                                a.href = URL.createObjectURL(blob);
+                                a.download = response.file || 'download';
+                                a.click();
+                                URL.revokeObjectURL(a.href);
+                            } catch (e) {
+                                window.location.href = downloadUrl;
+                            }
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="fas fa-download"></i> Download';
                         });
                         document.getElementById('nfcShareBtn').addEventListener('click', () => shareViaNfc(downloadUrl, response.file));
                         

@@ -240,7 +240,7 @@ def _process_download(code: str, key: str, is_send_file: bool = True):
             buffer = io.BytesIO(encrypted_bytes)
             buffer.seek(0)
             filename = record.get("encrypted_filename", record["filename"] + ".encrypted")
-            return (send_file(buffer, as_attachment=True, download_name=filename), None)
+            return (send_file(buffer, as_attachment=True, download_name=filename, mimetype="application/octet-stream"), None)
 
         # Mode 2: Access code + PIN - decrypt and return
         if hash_key(key) != record["key_hash"]:
@@ -262,7 +262,7 @@ def _process_download(code: str, key: str, is_send_file: bool = True):
             delete_transfer(code)
         buffer = io.BytesIO(decrypted_data)
         buffer.seek(0)
-        return (send_file(buffer, as_attachment=True, download_name=record["filename"]), None)
+        return (send_file(buffer, as_attachment=True, download_name=record["filename"], mimetype="application/octet-stream"), None)
     except PyMongoError:
         return None, "Database connection error"
     except Exception as exc:
