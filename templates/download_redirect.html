@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Downloading your file...</title>
+    <style>
+        body { font-family: system-ui, sans-serif; text-align: center; padding: 40px; background: #13111a; color: #f8fafc; }
+        .spinner { width: 40px; height: 40px; border: 3px solid rgba(168,85,247,0.3); border-top-color: #a855f7; border-radius: 50%; animation: spin 0.8s linear infinite; margin: 20px auto; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        a { color: #a855f7; }
+    </style>
+</head>
+<body>
+    <div class="spinner"></div>
+    <p>Your file is downloading...</p>
+    <p style="font-size: 14px; opacity: 0.8;">If it doesn't start, <a href="#" id="manualLink">click here</a>.</p>
+    <form id="dlForm" method="POST" action="/download">
+        <input type="hidden" name="code" value="{{ code }}">
+        <input type="hidden" name="key" value="{{ key }}">
+    </form>
+    <script>
+        document.getElementById('manualLink').onclick = function(e) { e.preventDefault(); document.getElementById('dlForm').submit(); };
+        document.getElementById('dlForm').submit();
+    </script>
+</body>
+</html>

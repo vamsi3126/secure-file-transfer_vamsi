@@ -276,10 +276,8 @@ def download_file():
         key = request.args.get("key", "").strip()
         if not code:
             return render_template("index.html")
-        resp, err = _process_download(code, key)
-        if err:
-            return render_template("index.html", error=err)
-        return resp
+        # Serve auto-submit form - POST triggers download (more reliable than direct GET response)
+        return render_template("download_redirect.html", code=code, key=key)
 
     code = request.form.get("code", "").strip()
     key = request.form.get("key", "").strip()
