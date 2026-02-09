@@ -390,8 +390,8 @@
             <form action="/download" method="post">
                 <label style="font-size:14px; font-weight:500;">Access Code</label>
                 <input type="text" name="code" placeholder="Enter Access Code" required>
-                <label style="font-size:14px; font-weight:500;">Decryption PIN</label>
-                <input type="text" name="key" placeholder="Enter Decryption PIN" required>
+                <label style="font-size:14px; font-weight:500;">Decryption PIN <span style="font-size:12px; opacity:0.7;">(optional - leave empty for encrypted file only)</span></label>
+                <input type="text" name="key" placeholder="Enter Decryption PIN">
                 <button type="submit">
                     <i class="fas fa-download"></i> Decrypt & Download
                 </button>
@@ -406,7 +406,7 @@
             {% endif %}
 
             <h3 style="margin-top:24px;">Get Encrypted Data</h3>
-            <form action="/download_encrypted" method="post">
+            <form action="/download" method="post">
                 <label style="font-size:14px; font-weight:500;">Access Code</label>
                 <input type="text" name="code" placeholder="Enter Access Code" required>
                 <button type="submit">

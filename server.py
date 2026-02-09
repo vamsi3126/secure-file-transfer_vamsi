@@ -12,6 +12,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import PyMongoError
+from pymongo.return_document import ReturnDocument
 from bson.binary import Binary
 
 app = Flask(__name__)
@@ -232,15 +233,21 @@ def download_file():
 
         # Mode 1: Access code only - return encrypted file (.encrypted)
         if not key:
-            buffer = io.BytesIO(encrypted_bytes)
-            buffer.seek(0)
+            # Atomic decrement - only succeeds if downloads_remaining > 0
+            updated = transfers.find_one_and_update(
+                {"access_code": code, "downloads_remaining": {"$gt": 0}},
+                {"$inc": {"downloads_remaining": -1}},
+                return_document=ReturnDocument.AFTER,
+            )
+            if not updated:
+                return render_template("index.html", error="Download limit reached")
 
-            # Decrement download count
-            new_remaining = remaining - 1
+            new_remaining = int(updated.get("downloads_remaining", 0))
             if new_remaining <= 0:
                 delete_transfer(code)
-            else:
-                transfers.update_one({"access_code": code}, {"$set": {"downloads_remaining": new_remaining}})
+
+            buffer = io.BytesIO(encrypted_bytes)
+            buffer.seek(0)
 
             # Return encrypted file with .encrypted extension
             encrypted_filename = record.get("encrypted_filename", record["filename"] + ".encrypted")
@@ -265,12 +272,18 @@ def download_file():
         buffer = io.BytesIO(decrypted_data)
         buffer.seek(0)
 
-        # Decrement download count
-        new_remaining = remaining - 1
+        # Atomic decrement - only succeeds if downloads_remaining > 0
+        updated = transfers.find_one_and_update(
+            {"access_code": code, "downloads_remaining": {"$gt": 0}},
+            {"$inc": {"downloads_remaining": -1}},
+            return_document=ReturnDocument.AFTER,
+        )
+        if not updated:
+            return render_template("index.html", error="Download limit reached")
+
+        new_remaining = int(updated.get("downloads_remaining", 0))
         if new_remaining <= 0:
             delete_transfer(code)
-        else:
-            transfers.update_one({"access_code": code}, {"$set": {"downloads_remaining": new_remaining}})
 
         # Return decrypted file (both text and files are downloaded)
         return send_file(
