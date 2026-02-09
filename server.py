@@ -12,7 +12,6 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 from cryptography.fernet import Fernet
 from pymongo import MongoClient, ASCENDING
 from pymongo.errors import PyMongoError
-from pymongo.return_document import ReturnDocument
 from bson.binary import Binary
 
 app = Flask(__name__)
@@ -29,12 +28,14 @@ MONGODB_DB = os.getenv("MONGODB_DB", "wireless_file_transfer")
 if not MONGODB_URI:
     raise RuntimeError("MONGODB_URI is required. Provide your MongoDB connection string.")
 
-mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=5000)
+mongo_client = MongoClient(MONGODB_URI, serverSelectionTimeoutMS=10000)
 db = mongo_client[MONGODB_DB]
 transfers = db["transfers"]
-transfers.create_index([("access_code", ASCENDING)], unique=True)
-# TTL index enforces 24h retention automatically
-transfers.create_index("created_at", expireAfterSeconds=60 * 60 * 24)
+try:
+    transfers.create_index([("access_code", ASCENDING)], unique=True)
+    transfers.create_index("created_at", expireAfterSeconds=60 * 60 * 24)
+except PyMongoError:
+    pass  # Indexes may already exist
 
 
 def cleanup_expired_records():
@@ -234,16 +235,15 @@ def download_file():
         # Mode 1: Access code only - return encrypted file (.encrypted)
         if not key:
             # Atomic decrement - only succeeds if downloads_remaining > 0
-            updated = transfers.find_one_and_update(
+            result = transfers.update_one(
                 {"access_code": code, "downloads_remaining": {"$gt": 0}},
                 {"$inc": {"downloads_remaining": -1}},
-                return_document=ReturnDocument.AFTER,
             )
-            if not updated:
+            if result.matched_count == 0:
                 return render_template("index.html", error="Download limit reached")
 
-            new_remaining = int(updated.get("downloads_remaining", 0))
-            if new_remaining <= 0:
+            updated = get_transfer(code)
+            if updated and int(updated.get("downloads_remaining", 0)) <= 0:
                 delete_transfer(code)
 
             buffer = io.BytesIO(encrypted_bytes)
@@ -273,16 +273,15 @@ def download_file():
         buffer.seek(0)
 
         # Atomic decrement - only succeeds if downloads_remaining > 0
-        updated = transfers.find_one_and_update(
+        result = transfers.update_one(
             {"access_code": code, "downloads_remaining": {"$gt": 0}},
             {"$inc": {"downloads_remaining": -1}},
-            return_document=ReturnDocument.AFTER,
         )
-        if not updated:
+        if result.matched_count == 0:
             return render_template("index.html", error="Download limit reached")
 
-        new_remaining = int(updated.get("downloads_remaining", 0))
-        if new_remaining <= 0:
+        updated = get_transfer(code)
+        if updated and int(updated.get("downloads_remaining", 0)) <= 0:
             delete_transfer(code)
 
         # Return decrypted file (both text and files are downloaded)
