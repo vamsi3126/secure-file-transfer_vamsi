@@ -499,11 +499,12 @@
     <script>
         const MAX_FILE_SIZE = 150 * 1024 * 1024;
 
-        // Share link via NFC only (write URL to NFC tag - tap phone to tag to transfer)
+        // Share link via system NFC only (opens NFC write - hold phone to tag or device)
         async function shareViaNfc(url, filename) {
             const btn = document.getElementById('nfcShareBtn');
             if (btn) btn.disabled = true;
             try {
+                // Use Web NFC - opens system NFC directly (no multi-option share sheet)
                 if ('NDEFReader' in window) {
                     const ndef = new NDEFReader();
                     await ndef.write({
@@ -513,24 +514,24 @@
                     setTimeout(() => {
                         if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-broadcast-tower"></i> NFC Share'; }
                     }, 2000);
-                } else {
-                    await navigator.clipboard.writeText(url);
-                    if (btn) btn.innerHTML = '<i class="fas fa-check"></i> Link copied!';
-                    if (btn) btn.disabled = false;
-                    alert('NFC not supported on this device. Link copied to clipboard.');
-                    setTimeout(() => {
-                        if (btn) btn.innerHTML = '<i class="fas fa-broadcast-tower"></i> NFC Share';
-                    }, 2000);
+                    return;
                 }
+                // Fallback: NFC not supported - copy to clipboard
+                await navigator.clipboard.writeText(url);
+                if (btn) btn.innerHTML = '<i class="fas fa-check"></i> Link copied!';
+                setTimeout(() => {
+                    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-broadcast-tower"></i> NFC Share'; }
+                }, 2000);
+                alert('NFC not available on this device. Link copied to clipboard.');
             } catch (err) {
                 if (btn) btn.disabled = false;
                 if (btn) btn.innerHTML = '<i class="fas fa-broadcast-tower"></i> NFC Share';
                 if (err.name !== 'AbortError') {
                     try {
                         await navigator.clipboard.writeText(url);
-                        alert('NFC failed. Link copied to clipboard.');
+                        alert('NFC cancelled or failed. Link copied to clipboard.');
                     } catch (_) {
-                        alert('NFC failed. Copy the link manually.');
+                        alert('Share failed. Copy the link manually.');
                     }
                 }
             }
