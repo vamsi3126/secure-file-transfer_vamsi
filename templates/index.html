@@ -361,7 +361,7 @@
                     <textarea id="textInput" placeholder="Type or paste text..." rows="6" style="background: var(--input-bg); color: var(--text-color); border: 1px solid var(--input-border); border-radius: 12px; padding: 12px; font-size: 15px; resize: vertical;"></textarea>
 
                     <label style="font-size:14px; font-weight:500; margin-top:8px;">Max Download Count <i class="fas fa-question-circle" title="How many times your file can be downloaded"></i></label>
-                    <input type="number" min="1" value="1" aria-label="Max Download Count">
+                    <input type="number" name="max_downloads" id="maxDownloadsInput" min="1" value="1" aria-label="Max Download Count">
 
                     
                     
@@ -483,6 +483,10 @@
             const textArea = document.getElementById('textInput');
             if (textArea) textArea.value = '';
             
+            // Reset max downloads input
+            const maxDownloadsInput = document.getElementById('maxDownloadsInput');
+            if (maxDownloadsInput) maxDownloadsInput.value = '1';
+            
             // Hide file selection
             const fileSelection = document.getElementById('fileSelection');
             if (fileSelection) fileSelection.style.display = 'none';
@@ -551,6 +555,12 @@
             progressContainer.style.display = 'block';
             
             const formData = new FormData();
+            
+            // Add max_downloads value
+            const maxDownloadsInput = document.getElementById('maxDownloadsInput');
+            const maxDownloads = maxDownloadsInput ? maxDownloadsInput.value : '1';
+            formData.append('max_downloads', maxDownloads);
+            
             if (file && !textValue) {
                 formData.append('file', file);
             } else if (!file && textValue) {
