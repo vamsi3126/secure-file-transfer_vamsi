@@ -16,7 +16,7 @@ from bson.binary import Binary
 
 app = Flask(__name__)
 
-MAX_FILE_SIZE = 150 * 1024 * 1024  # 150MB
+MAX_FILE_SIZE = 300 * 1024 * 1024  # 300MB
 app.config["MAX_CONTENT_LENGTH"] = MAX_FILE_SIZE
 
 DEFAULT_MONGO_URI = (
@@ -108,7 +108,7 @@ def generate_unique_code() -> str:
 
 @app.errorhandler(413)
 def request_too_large(e):
-    return jsonify({"error": "File exceeds 150MB limit"}), 413
+    return jsonify({"error": "File exceeds 300MB limit"}), 413
 
 
 @app.route("/")
@@ -132,7 +132,7 @@ def upload_file():
             if not data:
                 return jsonify({"error": "Empty file"}), 400
             if len(data) > MAX_FILE_SIZE:
-                return jsonify({"error": "File exceeds 150MB limit"}), 413
+                return jsonify({"error": "File exceeds 300MB limit"}), 413
             file_bytes = data
             filename = f.filename
 
@@ -151,7 +151,7 @@ def upload_file():
     if not has_file and has_text:
         data = text.encode("utf-8")
         if len(data) > MAX_FILE_SIZE:
-            return jsonify({"error": "Text exceeds 150MB limit"}), 413
+            return jsonify({"error": "Text exceeds 300MB limit"}), 413
         file_bytes = data
         filename = "message.txt"
         content_type = "text"

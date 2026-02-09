@@ -399,7 +399,7 @@
                         <label for="fileInput" class="file-upload-label">
                             <i class="fas fa-cloud-upload-alt"></i>
                             <span class="instructions">Drag & drop your file here, or click to browse</span>
-                            <span class="size-info">Max size 150MB</span>
+                            <span class="size-info">Max size 300MB</span>
                         </label>
                     </div>
                     
@@ -493,11 +493,11 @@
 
     <div class="notification error" id="sizeErrorNotification">
         <i class="fas fa-exclamation-circle"></i>
-        <span>File size exceeds 150MB limit</span>
+        <span>File size exceeds 300MB limit</span>
     </div>
 
     <script>
-        const MAX_FILE_SIZE = 150 * 1024 * 1024;
+        const MAX_FILE_SIZE = 300 * 1024 * 1024;
 
         // Share link via system NFC only (opens NFC write - hold phone to tag or device)
         async function shareViaNfc(url, filename) {
