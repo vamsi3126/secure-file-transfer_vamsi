@@ -352,6 +352,49 @@
         }
 
         .hidden { display: none; }
+
+        .email-section {
+            margin-top: 8px;
+            padding: 16px;
+            background: var(--info-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .email-section label {
+            font-size: 14px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+        }
+
+        .email-section .email-hint {
+            font-size: 12px;
+            color: var(--muted-text);
+            opacity: 0.8;
+            margin-top: 4px;
+        }
+
+        .email-sent-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 18px;
+            background: rgba(34, 197, 94, 0.15);
+            border: 1px solid rgba(34, 197, 94, 0.4);
+            border-radius: 10px;
+            color: rgb(74, 222, 128);
+            font-size: 14px;
+            font-weight: 500;
+            margin-top: 12px;
+        }
+
+        .email-sent-badge i {
+            font-size: 16px;
+        }
         
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(5px); }
@@ -414,6 +457,15 @@
 
                     <label style="font-size:14px; font-weight:500; margin-top:8px;">Max Download Count <i class="fas fa-question-circle" title="How many times your file can be downloaded"></i></label>
                     <input type="number" name="max_downloads" id="maxDownloadsInput" min="1" value="1" aria-label="Max Download Count">
+
+                    <div class="email-section">
+                        <label><i class="fas fa-envelope"></i> Share via Email <span style="font-size:12px; opacity:0.6;">(optional)</span></label>
+                        <input type="email" id="recipientEmail" placeholder="Recipient's email address" aria-label="Recipient email">
+                        <div class="email-hint">
+                            <i class="fas fa-info-circle"></i>
+                            If provided, a direct download link will be emailed to the recipient — no access code or PIN needed.
+                        </div>
+                    </div>
 
                     
                     
@@ -552,6 +604,10 @@
             const textArea = document.getElementById('textInput');
             if (textArea) textArea.value = '';
             
+            // Reset email field
+            const emailInput = document.getElementById('recipientEmail');
+            if (emailInput) emailInput.value = '';
+            
             // Reset max downloads input
             const maxDownloadsInput = document.getElementById('maxDownloadsInput');
             if (maxDownloadsInput) maxDownloadsInput.value = '1';
@@ -599,6 +655,7 @@
             const file = fileInput.files[0];
             const textArea = document.getElementById('textInput');
             const textValue = (textArea && textArea.value || '').trim();
+            const recipientEmail = (document.getElementById('recipientEmail').value || '').trim();
             const uploadBtn = document.getElementById('uploadBtn');
             const progressContainer = document.getElementById('progressContainer');
             const progressBar = document.getElementById('progressBar');
@@ -658,7 +715,7 @@
                     }
                 });
                 
-                xhr.onload = function() {
+                xhr.onload = async function() {
                     if (xhr.status === 200) {
                         const response = JSON.parse(xhr.responseText);
                         
@@ -669,72 +726,60 @@
                         }, 3000);
                         
                         const downloadUrl = window.location.origin + '/download?code=' + encodeURIComponent(response.code) + '&key=' + encodeURIComponent(response.key);
-                        document.getElementById('uploadResult').innerHTML = `
-                            <div class="credentials-box">
-                                <p><strong><i class="fas fa-key"></i> Access Code:</strong> ${response.code}</p>
-                                <p><strong><i class="fas fa-lock"></i> Decryption PIN:</strong> ${response.key}</p>
-                                <p style="margin-top: 12px; font-size: 14px; font-weight: 500;">
-                                    <i class="fas fa-link"></i> Download link (decrypted):
-                                </p>
-                                <div class="download-link-row">
-                                    <a href="${downloadUrl}" class="download-link" download="${(response.file || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')}" title="Click to download">${downloadUrl}</a>
-                                    <button type="button" class="copy-link-btn" id="downloadBtn" title="Download file now">
-                                        <i class="fas fa-download"></i> Download
-                                    </button>
-                                    <button type="button" class="nfc-share-btn" id="nfcShareBtn" title="Share via NFC">
-                                        <i class="fas fa-broadcast-tower"></i> NFC Share
-                                    </button>
-                                    <button type="button" class="copy-link-btn" id="copyLinkBtn" title="Copy link">
-                                        <i class="fas fa-copy"></i> Copy
-                                    </button>
-                                </div>
-                                <p style="margin-top: 12px; font-size: 13px; opacity: 0.7;">
-                                    <i class="fas fa-info-circle"></i> Share this link via NFC to transfer without internet. Recipient opens link when online to download.
-                                </p>
-                            </div>
-                        `;
-                        document.getElementById('copyLinkBtn').addEventListener('click', () => {
-                            navigator.clipboard.writeText(downloadUrl);
-                            const btn = document.getElementById('copyLinkBtn');
-                            const orig = btn.innerHTML;
-                            btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-                            setTimeout(() => { btn.innerHTML = orig; }, 2000);
-                        });
-                        document.getElementById('downloadBtn').addEventListener('click', async () => {
-                            const btn = document.getElementById('downloadBtn');
-                            btn.disabled = true;
-                            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
-                            try {
-                                const res = await fetch(downloadUrl);
-                                const blob = await res.blob();
-                                const a = document.createElement('a');
-                                a.href = URL.createObjectURL(blob);
-                                a.download = response.file || 'download';
-                                a.click();
-                                URL.revokeObjectURL(a.href);
-                            } catch (e) {
-                                window.location.href = downloadUrl;
-                            }
-                            btn.disabled = false;
-                            btn.innerHTML = '<i class="fas fa-download"></i> Download';
-                        });
-                        document.getElementById('nfcShareBtn').addEventListener('click', () => shareViaNfc(downloadUrl, response.file));
-                        
-                        const recipientView = document.getElementById('recipientView');
-                        const codeInput = document.querySelector('#recipientView input[name="code"]');
-                        const keyInput = document.querySelector('#recipientView input[name="key"]');
-                        if (codeInput) codeInput.value = response.code;
-                        if (keyInput) keyInput.value = response.key;
-                        if (recipientView) recipientView.scrollIntoView({ behavior: 'smooth' });
 
-                        // Reset UI
-                        uploadBtn.innerHTML = '<i class="fas fa-check"></i> Upload Complete';
-                        progressText.textContent = 'Upload complete!';
-                        
-                        // Auto-refresh form after successful upload
+                        // ---- EMAIL MODE: send link to recipient ----
+                        if (recipientEmail) {
+                            uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending email...';
+                            progressText.textContent = 'Sending download link to ' + recipientEmail + '...';
+                            try {
+                                const emailRes = await fetch('/send-email', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                        recipient_email: recipientEmail,
+                                        code: response.code,
+                                        key: response.key,
+                                        filename: response.file,
+                                        size_mb: response.size_mb
+                                    })
+                                });
+                                const emailData = await emailRes.json();
+                                if (emailRes.ok && emailData.success) {
+                                    document.getElementById('uploadResult').innerHTML = `
+                                        <div class="credentials-box">
+                                            <div class="email-sent-badge">
+                                                <i class="fas fa-check-circle"></i>
+                                                Download link sent to <strong>${recipientEmail}</strong>
+                                            </div>
+                                            <p style="margin-top:16px; font-size:14px; color: var(--muted-text);">
+                                                <i class="fas fa-file"></i> <strong>${response.file}</strong> (${response.size_mb} MB)
+                                            </p>
+                                            <p style="font-size:13px; color: var(--muted-text); opacity:0.8; margin-top:8px;">
+                                                <i class="fas fa-info-circle"></i> The recipient can download the file directly from the email link — no access code or PIN required.
+                                                <br>The link expires in 24 hours.
+                                            </p>
+                                        </div>
+                                    `;
+                                    uploadBtn.innerHTML = '<i class="fas fa-check"></i> Sent!';
+                                    progressText.textContent = 'Email sent successfully!';
+                                } else {
+                                    // Email failed — fall back to showing credentials
+                                    showCredentials(response, downloadUrl);
+                                    progressText.textContent = 'Email failed: ' + (emailData.error || 'Unknown error') + '. Credentials shown below.';
+                                }
+                            } catch (emailErr) {
+                                showCredentials(response, downloadUrl);
+                                progressText.textContent = 'Email failed. Credentials shown below.';
+                            }
+                        } else {
+                            // ---- NO EMAIL: show access code + PIN ----
+                            showCredentials(response, downloadUrl);
+                        }
+
+                        // Reset UI after delay
                         setTimeout(() => {
                             resetUploadForm();
-                        }, 2000); // Wait 2 seconds before resetting
+                        }, 2000);
                     } else {
                         handleUploadError(xhr.responseText);
                     }
@@ -765,6 +810,73 @@
                 uploadBtn.disabled = false;
             }
         });
+
+        // Show access code + PIN credentials box (no-email mode, or email fallback)
+        function showCredentials(response, downloadUrl) {
+            const uploadBtn = document.getElementById('uploadBtn');
+            const progressText = document.getElementById('progressText');
+
+            document.getElementById('uploadResult').innerHTML = `
+                <div class="credentials-box">
+                    <p><strong><i class="fas fa-key"></i> Access Code:</strong> ${response.code}</p>
+                    <p><strong><i class="fas fa-lock"></i> Decryption PIN:</strong> ${response.key}</p>
+                    <p style="margin-top: 12px; font-size: 14px; font-weight: 500;">
+                        <i class="fas fa-link"></i> Download link (decrypted):
+                    </p>
+                    <div class="download-link-row">
+                        <a href="${downloadUrl}" class="download-link" download="${(response.file || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')}" title="Click to download">${downloadUrl}</a>
+                        <button type="button" class="copy-link-btn" id="downloadBtn" title="Download file now">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                        <button type="button" class="nfc-share-btn" id="nfcShareBtn" title="Share via NFC">
+                            <i class="fas fa-broadcast-tower"></i> NFC Share
+                        </button>
+                        <button type="button" class="copy-link-btn" id="copyLinkBtn" title="Copy link">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <p style="margin-top: 12px; font-size: 13px; opacity: 0.7;">
+                        <i class="fas fa-info-circle"></i> Share this link via NFC to transfer without internet. Recipient opens link when online to download.
+                    </p>
+                </div>
+            `;
+            document.getElementById('copyLinkBtn').addEventListener('click', () => {
+                navigator.clipboard.writeText(downloadUrl);
+                const btn = document.getElementById('copyLinkBtn');
+                const orig = btn.innerHTML;
+                btn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                setTimeout(() => { btn.innerHTML = orig; }, 2000);
+            });
+            document.getElementById('downloadBtn').addEventListener('click', async () => {
+                const btn = document.getElementById('downloadBtn');
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+                try {
+                    const res = await fetch(downloadUrl);
+                    const blob = await res.blob();
+                    const a = document.createElement('a');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = response.file || 'download';
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                } catch (e) {
+                    window.location.href = downloadUrl;
+                }
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-download"></i> Download';
+            });
+            document.getElementById('nfcShareBtn').addEventListener('click', () => shareViaNfc(downloadUrl, response.file));
+
+            const recipientView = document.getElementById('recipientView');
+            const codeInput = document.querySelector('#recipientView input[name="code"]');
+            const keyInput = document.querySelector('#recipientView input[name="key"]');
+            if (codeInput) codeInput.value = response.code;
+            if (keyInput) keyInput.value = response.key;
+            if (recipientView) recipientView.scrollIntoView({ behavior: 'smooth' });
+
+            uploadBtn.innerHTML = '<i class="fas fa-check"></i> Upload Complete';
+            progressText.textContent = 'Upload complete!';
+        }
 
         // Fixed drag and drop functionality
         const fileUploadLabel = document.querySelector('.file-upload-label');

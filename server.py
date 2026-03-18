@@ -4,8 +4,13 @@ import hashlib
 import io
 import os
 import random
+import smtplib
 import string
+import uuid
 from datetime import datetime, timedelta
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+from email.utils import formatdate, formataddr
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -20,10 +25,16 @@ MAX_FILE_SIZE = 300 * 1024 * 1024  # 300MB
 app.config["MAX_CONTENT_LENGTH"] = MAX_FILE_SIZE
 
 DEFAULT_MONGO_URI = (
-    "mongodb+srv://vamsi3126:Vsvg%40database1@cluster0.4glo7wg.mongodb.net/?appName=Cluster0"
+    "mongodb+srv://vamsigattikoppula2_db_user:file-transfer123@cluster0.ebhog9t.mongodb.net/?appName=Cluster0"
 )
 MONGODB_URI = os.getenv("MONGODB_URI", DEFAULT_MONGO_URI)
 MONGODB_DB = os.getenv("MONGODB_DB", "wireless_file_transfer")
+
+# SMTP configuration for email sharing
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.gmail.com")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+SMTP_EMAIL = os.getenv("SMTP_EMAIL", "")   # e.g. yourapp@gmail.com
+SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")  # Gmail app-password
 
 if not MONGODB_URI:
     raise RuntimeError("MONGODB_URI is required. Provide your MongoDB connection string.")
@@ -289,6 +300,133 @@ def download_file():
     if err:
         return render_template("index.html", error=err)
     return resp
+
+def send_email_notification(recipient_email, download_url, filename, size_mb):
+    """Send a clean, spam-filter-friendly email with the download link."""
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        raise RuntimeError("SMTP credentials not configured. Set SMTP_EMAIL and SMTP_PASSWORD env vars.")
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = f"File shared with you: {filename}"
+    msg["From"] = formataddr(("Secure File Transfer", SMTP_EMAIL))
+    msg["To"] = recipient_email
+    msg["Reply-To"] = SMTP_EMAIL
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = f"<{uuid.uuid4()}@securefiletransfer.app>"
+
+    # Rich plain-text version (improves spam score significantly)
+    plain = f"""Hello,
+
+A file has been shared with you through Secure File Transfer.
+
+File details:
+  Name: {filename}
+  Size: {size_mb} MB
+
+You can download the file by visiting this link:
+{download_url}
+
+This link will expire in 24 hours. Please download the file before it expires.
+
+If you did not expect this email, you can safely ignore it.
+
+Best regards,
+Secure File Transfer
+"""
+
+    # Clean, light-themed HTML (white background, minimal styling)
+    html = f"""\
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0; padding:0; font-family: Arial, Helvetica, sans-serif; background-color:#f4f4f7;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7; padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="520" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; border:1px solid #e0e0e0;">
+          <!-- Header -->
+          <tr>
+            <td style="padding:30px 32px 20px; text-align:center; border-bottom:1px solid #eeeeee;">
+              <h1 style="margin:0; font-size:22px; color:#333333; font-weight:600;">Secure File Transfer</h1>
+            </td>
+          </tr>
+          <!-- Body -->
+          <tr>
+            <td style="padding:28px 32px;">
+              <p style="margin:0 0 18px; font-size:15px; color:#555555; line-height:1.6;">
+                Hello, a file has been shared with you. You can download it using the button below.
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8f9fa; border-radius:6px; border:1px solid #e9ecef;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <p style="margin:0 0 4px; font-size:14px; color:#333333;"><strong>File:</strong> {filename}</p>
+                    <p style="margin:0; font-size:14px; color:#666666;"><strong>Size:</strong> {size_mb} MB</p>
+                  </td>
+                </tr>
+              </table>
+              <table width="100%" cellpadding="0" cellspacing="0" style="margin-top:24px;">
+                <tr>
+                  <td align="center">
+                    <a href="{download_url}" style="display:inline-block; padding:12px 36px; background-color:#4A90D9; color:#ffffff; text-decoration:none; border-radius:6px; font-weight:600; font-size:15px;">Download File</a>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0; font-size:13px; color:#999999; line-height:1.5;">
+                This link expires in 24 hours. If you did not expect this email, you can safely ignore it.
+              </p>
+            </td>
+          </tr>
+          <!-- Footer -->
+          <tr>
+            <td style="padding:16px 32px; text-align:center; border-top:1px solid #eeeeee; background-color:#fafafa; border-radius:0 0 8px 8px;">
+              <p style="margin:0; font-size:12px; color:#aaaaaa;">Sent via Secure File Transfer</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+    msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.sendmail(SMTP_EMAIL, recipient_email, msg.as_string())
+
+
+@app.route("/send-email", methods=["POST"])
+def send_email():
+    """After a successful upload, send the download link to a recipient via email."""
+    data = request.get_json(force=True)
+    recipient = (data.get("recipient_email") or "").strip()
+    code = (data.get("code") or "").strip()
+    key = (data.get("key") or "").strip()
+    filename = data.get("filename", "file")
+    size_mb = data.get("size_mb", 0)
+
+    if not recipient:
+        return jsonify({"error": "Recipient email is required"}), 400
+    if not code or not key:
+        return jsonify({"error": "Upload code and key are required"}), 400
+
+    download_url = request.host_url.rstrip("/") + "/download?code=" + code + "&key=" + key
+
+    try:
+        send_email_notification(recipient, download_url, filename, size_mb)
+        return jsonify({"success": True, "message": f"Download link sent to {recipient}"})
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as exc:
+        app.logger.exception("Email send failed")
+        return jsonify({"error": f"Failed to send email: {exc}"}), 500
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.getenv("PORT", 5000)), debug=False)
