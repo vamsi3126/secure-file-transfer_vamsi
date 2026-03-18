@@ -740,7 +740,8 @@
                                         code: response.code,
                                         key: response.key,
                                         filename: response.file,
-                                        size_mb: response.size_mb
+                                        size_mb: response.size_mb,
+                                        text_content: textValue ? textValue : ""
                                     })
                                 });
                                 const emailData = await emailRes.json();
@@ -749,14 +750,13 @@
                                         <div class="credentials-box">
                                             <div class="email-sent-badge">
                                                 <i class="fas fa-check-circle"></i>
-                                                Download link sent to <strong>${recipientEmail}</strong>
+                                                ${textValue ? 'Text snippet' : 'Download link'} sent to <strong>${recipientEmail}</strong>
                                             </div>
                                             <p style="margin-top:16px; font-size:14px; color: var(--muted-text);">
-                                                <i class="fas fa-file"></i> <strong>${response.file}</strong> (${response.size_mb} MB)
+                                                <i class="fas ${textValue ? 'fa-align-left' : 'fa-file'}"></i> <strong>${textValue ? 'Secure Text Snippet' : response.file}</strong> ${textValue ? '' : '(' + response.size_mb + ' MB)'}
                                             </p>
                                             <p style="font-size:13px; color: var(--muted-text); opacity:0.8; margin-top:8px;">
-                                                <i class="fas fa-info-circle"></i> The recipient can download the file directly from the email link — no access code or PIN required.
-                                                <br>The link expires in 24 hours.
+                                                <i class="fas fa-info-circle"></i> ${textValue ? "The recipient will receive the text snippet directly in their email." : "The recipient can download the file directly from the email link — no access code or PIN required.<br>The link expires in 24 hours."}
                                             </p>
                                         </div>
                                     `;

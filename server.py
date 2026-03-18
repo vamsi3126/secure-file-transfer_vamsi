@@ -271,6 +271,9 @@ def _process_download(code: str, key: str, is_send_file: bool = True):
         updated = get_transfer(code)
         if updated and int(updated.get("downloads_remaining", 0)) <= 0:
             delete_transfer(code)
+        if record.get("content_type") == "text":
+            return (decrypted_data.decode("utf-8"), None)
+
         buffer = io.BytesIO(decrypted_data)
         buffer.seek(0)
         return (send_file(buffer, as_attachment=True, download_name=record["filename"], mimetype="application/octet-stream"), None)
@@ -299,6 +302,8 @@ def download_file():
     resp, err = _process_download(code, key)
     if err:
         return render_template("index.html", error=err)
+    if isinstance(resp, str):
+        return render_template("view_text.html", text_content=resp)
     return resp
 
 def send_email_notification(recipient_email, download_url, filename, size_mb):
@@ -401,6 +406,88 @@ Secure File Transfer
         server.sendmail(SMTP_EMAIL, recipient_email, msg.as_string())
 
 
+def send_text_email_notification(recipient_email, text_content):
+    """Send a clean, spam-filter-friendly email containing the shared text."""
+    if not SMTP_EMAIL or not SMTP_PASSWORD:
+        raise RuntimeError("SMTP credentials not configured. Set SMTP_EMAIL and SMTP_PASSWORD env vars.")
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "Someone shared a secure text snippet with you"
+    msg["From"] = formataddr(("Secure File Transfer", SMTP_EMAIL))
+    msg["To"] = recipient_email
+    msg["Reply-To"] = SMTP_EMAIL
+    msg["Date"] = formatdate(localtime=True)
+    msg["Message-ID"] = f"<{uuid.uuid4()}@securefiletransfer.app>"
+
+    plain = f"""Hello,
+
+A text snippet has been shared with you through Secure File Transfer:
+
+---
+{text_content}
+---
+
+If you did not expect this email, you can safely ignore it.
+
+Best regards,
+Secure File Transfer
+"""
+
+    html = f"""\
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0; padding:0; font-family: Arial, Helvetica, sans-serif; background-color:#f4f4f7;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f7; padding:40px 20px;">
+    <tr>
+      <td align="center">
+        <table width="520" cellpadding="0" cellspacing="0" style="background-color:#ffffff; border-radius:8px; border:1px solid #e0e0e0;">
+          <tr>
+            <td style="padding:30px 32px 20px; text-align:center; border-bottom:1px solid #eeeeee;">
+              <h1 style="margin:0; font-size:22px; color:#333333; font-weight:600;">Secure File Transfer</h1>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 32px;">
+              <p style="margin:0 0 18px; font-size:15px; color:#555555; line-height:1.6;">
+                Hello, a secure text snippet has been shared with you:
+              </p>
+              <table width="100%" cellpadding="0" cellspacing="0" style="background-color:#f8f9fa; border-radius:6px; border:1px solid #e9ecef;">
+                <tr>
+                  <td style="padding:16px 20px;">
+                    <pre style="margin:0; font-family: Consolas, monospace; font-size:14px; color:#333333; white-space:pre-wrap; word-break:break-word;">{text_content}</pre>
+                  </td>
+                </tr>
+              </table>
+              <p style="margin:24px 0 0; font-size:13px; color:#999999; line-height:1.5;">
+                This snippet was sent directly via email. If you did not expect this email, you can safely ignore it.
+              </p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:16px 32px; text-align:center; border-top:1px solid #eeeeee; background-color:#fafafa; border-radius:0 0 8px 8px;">
+              <p style="margin:0; font-size:12px; color:#aaaaaa;">Sent via Secure File Transfer</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+"""
+
+    msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+        server.ehlo()
+        server.starttls()
+        server.ehlo()
+        server.login(SMTP_EMAIL, SMTP_PASSWORD)
+        server.sendmail(SMTP_EMAIL, recipient_email, msg.as_string())
+
+
 @app.route("/send-email", methods=["POST"])
 def send_email():
     """After a successful upload, send the download link to a recipient via email."""
@@ -410,6 +497,7 @@ def send_email():
     key = (data.get("key") or "").strip()
     filename = data.get("filename", "file")
     size_mb = data.get("size_mb", 0)
+    text_content = (data.get("text_content") or "").strip()
 
     if not recipient:
         return jsonify({"error": "Recipient email is required"}), 400
@@ -419,8 +507,12 @@ def send_email():
     download_url = request.host_url.rstrip("/") + "/download?code=" + code + "&key=" + key
 
     try:
-        send_email_notification(recipient, download_url, filename, size_mb)
-        return jsonify({"success": True, "message": f"Download link sent to {recipient}"})
+        if text_content:
+            send_text_email_notification(recipient, text_content)
+            return jsonify({"success": True, "message": f"Text snippet sent to {recipient}"})
+        else:
+            send_email_notification(recipient, download_url, filename, size_mb)
+            return jsonify({"success": True, "message": f"Download link sent to {recipient}"})
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as exc:
