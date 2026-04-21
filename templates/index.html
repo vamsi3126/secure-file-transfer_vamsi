@@ -441,16 +441,12 @@
                     <input type="file" name="file" id="fileInput" style="display: none;" onchange="handleFileChange()">
                         <label for="fileInput" class="file-upload-label">
                             <i class="fas fa-cloud-upload-alt"></i>
-                            <span class="instructions">Drag & drop your file here, or click to browse</span>
-                            <span class="size-info">Max size 300MB</span>
+                            <span class="instructions">Drag &amp; drop your file here, or click to browse</span>
+                            <span class="size-info">1 file &bull; up to 300 MB &bull; large files auto-chunked</span>
                         </label>
                     </div>
                     
-                    <div class="file-selection" id="fileSelection">
-                        <i class="fas fa-file"></i>
-                        <span id="selectedFileName"></span>
-                        <span id="fileSize" style="margin-left: auto; color: var(--muted-text); font-size: 13px;"></span>
-                    </div>
+                    <div class="file-selection" id="fileSelection" style="flex-direction:column;align-items:flex-start;"><div id="fileListItems" style="width:100%;"></div></div>
 
                     <label style="font-size:14px; font-weight:500; margin-top:8px;">Or Paste Text</label>
                     <textarea id="textInput" placeholder="Type or paste text..." rows="6" style="background: var(--input-bg); color: var(--text-color); border: 1px solid var(--input-border); border-radius: 12px; padding: 12px; font-size: 15px; resize: vertical;"></textarea>
@@ -577,21 +573,28 @@
             displayFileName();
         }
 
-        // Display selected filename and size
+        // Display all selected filenames and sizes
         function displayFileName() {
-            const fileInput = document.getElementById('fileInput');
+            const fileInput    = document.getElementById('fileInput');
             const fileSelection = document.getElementById('fileSelection');
-            const fileNameDisplay = document.getElementById('selectedFileName');
-            const fileSizeDisplay = document.getElementById('fileSize');
-            
-            if (fileInput.files.length > 0) {
-                const file = fileInput.files[0];
-                fileSelection.style.display = 'flex';
-                fileNameDisplay.textContent = file.name;
-                fileSizeDisplay.textContent = formatFileSize(file.size);
-            } else {
+            const listWrapper  = document.getElementById('fileListItems');
+
+            if (!fileInput.files.length) {
                 fileSelection.style.display = 'none';
+                listWrapper.innerHTML = '';
+                return;
             }
+
+            const files = Array.from(fileInput.files);
+            listWrapper.innerHTML = files.map((f, i) =>
+                `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;
+                            border-bottom:1px solid rgba(168,85,247,0.12);">
+                    <i class="fas fa-file" style="color:var(--primary-color);"></i>
+                    <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${f.name}</span>
+                    <span style="color:var(--muted-text);font-size:13px;white-space:nowrap;">${formatFileSize(f.size)}</span>
+                 </div>`
+            ).join('');
+            fileSelection.style.display = 'flex';
         }
 
         // Reset upload form to initial state
@@ -651,56 +654,70 @@
         document.getElementById('uploadForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
-            const fileInput = document.getElementById('fileInput');
-            const file = fileInput.files[0];
-            const textArea = document.getElementById('textInput');
-            const textValue = (textArea && textArea.value || '').trim();
+            const fileInput    = document.getElementById('fileInput');
+            const files        = Array.from(fileInput.files);
+            const textArea     = document.getElementById('textInput');
+            const textValue    = (textArea && textArea.value || '').trim();
             const recipientEmail = (document.getElementById('recipientEmail').value || '').trim();
-            const uploadBtn = document.getElementById('uploadBtn');
+            const uploadBtn    = document.getElementById('uploadBtn');
             const progressContainer = document.getElementById('progressContainer');
-            const progressBar = document.getElementById('progressBar');
+            const progressBar  = document.getElementById('progressBar');
             const progressText = document.getElementById('progressText');
-            const successNotification = document.getElementById('successNotification');
+            const successNotification  = document.getElementById('successNotification');
             const sizeErrorNotification = document.getElementById('sizeErrorNotification');
-            
+
             // Clear previous notifications
             successNotification.classList.remove('show');
             sizeErrorNotification.classList.remove('show');
-            
-            if (file && file.size > MAX_FILE_SIZE) {
-                sizeErrorNotification.classList.add('show');
-                setTimeout(() => sizeErrorNotification.classList.remove('show'), 3000);
+
+            // Validate file count
+            if (files.length > 1) {
+                handleUploadError('Only 1 file per upload is allowed.');
                 return;
             }
-            
+
+            // Validate individual file sizes
+            const oversized = files.find(f => f.size > MAX_FILE_SIZE);
+            if (oversized) {
+                sizeErrorNotification.querySelector('span').textContent =
+                    `"${oversized.name}" exceeds the 300 MB limit.`;
+                sizeErrorNotification.classList.add('show');
+                setTimeout(() => sizeErrorNotification.classList.remove('show'), 3500);
+                return;
+            }
+
             // Update UI
             uploadBtn.disabled = true;
             uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Encrypting...';
             progressContainer.style.display = 'block';
-            
+
             const formData = new FormData();
-            
+
             // Add max_downloads value
             const maxDownloadsInput = document.getElementById('maxDownloadsInput');
             const maxDownloads = maxDownloadsInput ? maxDownloadsInput.value : '1';
             formData.append('max_downloads', maxDownloads);
-            
-            if (file && !textValue) {
-                formData.append('file', file);
-            } else if (!file && textValue) {
+
+            const hasFiles = files.length > 0;
+
+            if (hasFiles && !textValue) {
+                // Append every selected file under the same field name
+                files.forEach(f => formData.append('file', f));
+            } else if (!hasFiles && textValue) {
                 const bytes = new TextEncoder().encode(textValue).length;
                 if (bytes > MAX_FILE_SIZE) {
+                    sizeErrorNotification.querySelector('span').textContent = 'Text content exceeds the 300 MB limit.';
                     sizeErrorNotification.classList.add('show');
                     setTimeout(() => sizeErrorNotification.classList.remove('show'), 3000);
                     uploadBtn.disabled = false;
                     return;
                 }
                 formData.append('text', textValue);
-            } else if (!file && !textValue) {
-                handleUploadError('No content provided');
+            } else if (!hasFiles && !textValue) {
+                handleUploadError('No content provided.');
                 return;
             } else {
-                handleUploadError('Provide either a file or text, not both');
+                handleUploadError('Provide either file(s) or text, not both.');
                 return;
             }
             
@@ -739,24 +756,31 @@
                                         recipient_email: recipientEmail,
                                         code: response.code,
                                         key: response.key,
+                                        // Support both single-file (compat) and multi-file
                                         filename: response.file,
                                         size_mb: response.size_mb,
+                                        files: response.files || [],
                                         text_content: textValue ? textValue : ""
                                     })
                                 });
                                 const emailData = await emailRes.json();
                                 if (emailRes.ok && emailData.success) {
+                                    const filesSummary = (response.files || []).map(f =>
+                                        `<div style="font-size:13px;color:var(--muted-text);">
+                                            <i class="fas fa-file"></i> ${f.filename} (${f.size_mb} MB)
+                                         </div>`
+                                    ).join('');
                                     document.getElementById('uploadResult').innerHTML = `
                                         <div class="credentials-box">
                                             <div class="email-sent-badge">
                                                 <i class="fas fa-check-circle"></i>
                                                 ${textValue ? 'Text snippet' : 'Download link'} sent to <strong>${recipientEmail}</strong>
                                             </div>
-                                            <p style="margin-top:16px; font-size:14px; color: var(--muted-text);">
-                                                <i class="fas ${textValue ? 'fa-align-left' : 'fa-file'}"></i> <strong>${textValue ? 'Secure Text Snippet' : response.file}</strong> ${textValue ? '' : '(' + response.size_mb + ' MB)'}
-                                            </p>
-                                            <p style="font-size:13px; color: var(--muted-text); opacity:0.8; margin-top:8px;">
-                                                <i class="fas fa-info-circle"></i> ${textValue ? "The recipient will receive the text snippet directly in their email." : "The recipient can download the file directly from the email link — no access code or PIN required.<br>The link expires in 24 hours."}
+                                            <div style="margin-top:12px;">${filesSummary}</div>
+                                            <p style="font-size:13px;color:var(--muted-text);opacity:0.85;margin-top:10px;">
+                                                <i class="fas fa-info-circle"></i>
+                                                ${textValue ? 'The recipient will receive the text snippet directly in their email.'
+                                                            : 'The recipient can download the file(s) directly from the email link — no access code or PIN required. The link expires in 24 hours.'}
                                             </p>
                                         </div>
                                     `;
@@ -813,19 +837,34 @@
 
         // Show access code + PIN credentials box (no-email mode, or email fallback)
         function showCredentials(response, downloadUrl) {
-            const uploadBtn = document.getElementById('uploadBtn');
+            const uploadBtn    = document.getElementById('uploadBtn');
             const progressText = document.getElementById('progressText');
+
+            const filename  = response.file || 'file';
+            const chunkNote = response.storage_type === 'chunked'
+                ? '<span style="font-size:12px;color:var(--muted-text);opacity:0.85;"><i class="fas fa-layer-group"></i> Stored as encrypted chunks (large file)</span>'
+                : '';
 
             document.getElementById('uploadResult').innerHTML = `
                 <div class="credentials-box">
                     <p><strong><i class="fas fa-key"></i> Access Code:</strong> ${response.code}</p>
                     <p><strong><i class="fas fa-lock"></i> Decryption PIN:</strong> ${response.key}</p>
-                    <p style="margin-top: 12px; font-size: 14px; font-weight: 500;">
+                    <div style="margin:12px 0 16px;padding:10px 14px;
+                               background:rgba(168,85,247,0.06);border-radius:10px;
+                               border:1px solid rgba(168,85,247,0.2);">
+                        <div style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted-text);">
+                            <i class="fas fa-file" style="color:var(--primary-color);"></i>
+                            <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${filename}</span>
+                            <span style="opacity:0.7;white-space:nowrap;">${response.size_mb} MB</span>
+                        </div>
+                        ${chunkNote ? '<div style="margin-top:6px;">' + chunkNote + '</div>' : ''}
+                    </div>
+                    <p style="font-size: 14px; font-weight: 500;">
                         <i class="fas fa-link"></i> Download link (decrypted):
                     </p>
                     <div class="download-link-row">
-                        <a href="${downloadUrl}" class="download-link" download="${(response.file || 'file').replace(/[^a-zA-Z0-9._-]/g, '_')}" title="Click to download">${downloadUrl}</a>
-                        <button type="button" class="copy-link-btn" id="downloadBtn" title="Download file now">
+                        <a href="${downloadUrl}" class="download-link" title="Click to download">${downloadUrl}</a>
+                        <button type="button" class="copy-link-btn" id="downloadBtn" title="Download now">
                             <i class="fas fa-download"></i> Download
                         </button>
                         <button type="button" class="nfc-share-btn" id="nfcShareBtn" title="Share via NFC">
@@ -836,7 +875,8 @@
                         </button>
                     </div>
                     <p style="margin-top: 12px; font-size: 13px; opacity: 0.7;">
-                        <i class="fas fa-info-circle"></i> Share this link via NFC to transfer without internet. Recipient opens link when online to download.
+                        <i class="fas fa-info-circle"></i>
+                        Share this link via NFC to transfer without internet.
                     </p>
                 </div>
             `;
@@ -856,7 +896,7 @@
                     const blob = await res.blob();
                     const a = document.createElement('a');
                     a.href = URL.createObjectURL(blob);
-                    a.download = response.file || 'download';
+                    a.download = filename || 'download';
                     a.click();
                     URL.revokeObjectURL(a.href);
                 } catch (e) {
@@ -865,13 +905,13 @@
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-download"></i> Download';
             });
-            document.getElementById('nfcShareBtn').addEventListener('click', () => shareViaNfc(downloadUrl, response.file));
+            document.getElementById('nfcShareBtn').addEventListener('click', () => shareViaNfc(downloadUrl, filename));
 
             const recipientView = document.getElementById('recipientView');
             const codeInput = document.querySelector('#recipientView input[name="code"]');
-            const keyInput = document.querySelector('#recipientView input[name="key"]');
+            const keyInput  = document.querySelector('#recipientView input[name="key"]');
             if (codeInput) codeInput.value = response.code;
-            if (keyInput) keyInput.value = response.key;
+            if (keyInput)  keyInput.value  = response.key;
             if (recipientView) recipientView.scrollIntoView({ behavior: 'smooth' });
 
             uploadBtn.innerHTML = '<i class="fas fa-check"></i> Upload Complete';
@@ -912,11 +952,14 @@
             e.preventDefault();
             fileUploadLabel.style.background = 'var(--input-bg)';
             fileUploadLabel.style.borderColor = 'var(--input-border)';
-            
-            // Handle dropped files
+
             if (e.dataTransfer.files.length) {
+                if (e.dataTransfer.files.length > 1) {
+                    alert('Only 1 file per upload is allowed.');
+                    return;
+                }
                 fileInput.files = e.dataTransfer.files;
-                handleFileChange(); // Update UI and clear previous results
+                handleFileChange();
             }
         });
 
