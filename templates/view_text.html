@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>View Secure Text</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: rgb(168, 85, 247);
+            --primary-hover: rgb(124, 58, 237);
+            --text-color: rgb(248, 250, 252);
+            --muted-text: rgb(196, 181, 253);
+            --card-bg: rgba(17, 14, 28, 0.7);
+            --card-border: rgba(168, 85, 247, 0.35);
+            --input-bg: rgba(24, 20, 38, 0.85);
+            --input-border: rgba(168, 85, 247, 0.25);
+            --input-hover: rgba(31, 24, 56, 0.85);
+            --success-bg: rgba(34, 197, 94, 0.95);
+            --glow: 0 0 20px rgba(168, 85, 247, 0.35), 0 0 40px rgba(168, 85, 247, 0.25);
+        }
+        
+        body {
+            font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: radial-gradient(1200px circle at 30% 20%, rgb(26, 19, 45) 0%, rgb(13, 10, 23) 60%, rgb(8, 7, 17) 100%);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            min-height: 100vh;
+        }
+        
+        .container {
+            width: min(80vw, 900px);
+            margin: 60px auto 80px;
+            padding: 0 20px;
+        }
+        
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        h1 {
+            font-size: 32px;
+            font-weight: 700;
+            margin: 0;
+            color: var(--text-color);
+            text-shadow: var(--glow);
+        }
+        
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 22px;
+            padding: 32px;
+            box-shadow: var(--glow);
+            backdrop-filter: blur(6px);
+        }
+
+        .text-container {
+            background: var(--input-bg);
+            border: 1px solid var(--input-border);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            overflow-x: auto;
+        }
+
+        pre {
+            margin: 0;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 15px;
+            color: var(--text-color);
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            margin-top: 30px;
+        }
+
+        button, .btn-link {
+            padding: 14px 28px;
+            border-radius: 12px;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(90deg, rgb(124, 58, 237), rgb(168, 85, 247));
+            color: rgb(255, 255, 255);
+            box-shadow: var(--glow);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+        }
+
+        .btn-secondary {
+            background: var(--input-bg);
+            color: var(--text-color);
+            border: 1px solid var(--input-border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--input-hover);
+            transform: translateY(-2px);
+        }
+
+        .copy-notification {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: var(--success-bg);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 500;
+            transform: translateY(-100px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            z-height: 1000;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
+        }
+
+        .copy-notification.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div class="copy-notification" id="copyNotification">
+        <i class="fas fa-check-circle"></i> Text copied to clipboard!
+    </div>
+
+    <div class="container">
+        <header>
+            <h1><i class="fas fa-align-left" style="color: var(--primary-color);"></i> Secure Text Snippet</h1>
+            <p style="color: var(--muted-text); margin-top: 12px;">This snippet has been securely decrypted for you.</p>
+        </header>
+
+        <div class="card">
+            <div class="text-container">
+                <pre id="secureText">{{ text_content }}</pre>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-primary" onclick="copyText()">
+                    <i class="fas fa-copy"></i> Copy to Clipboard
+                </button>
+                <a href="/" class="btn-secondary">
+                    <i class="fas fa-home"></i> Back Home
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function copyText() {
+            const textElement = document.getElementById('secureText');
+            navigator.clipboard.writeText(textElement.textContent).then(() => {
+                const notification = document.getElementById('copyNotification');
+                notification.classList.add('show');
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                }, 3000);
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+                alert("Failed to copy text to clipboard");
+            });
+        }
+    </script>
+</body>
+</html>
